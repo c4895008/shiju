@@ -1,0 +1,1628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>「拾句」电影台词感悟站 · 技术设计文档 v1.0</title>
+<style>
+  :root{
+    --bg:#FBFBFA;
+    --ink:#1F2937;
+    --mut:#6B7280;
+    --faint:#9CA3AF;
+    --line:#E5E4DE;
+    --accent:#334EAC;
+    --accent-soft:rgba(51,78,172,.08);
+    --accent2:#7096D1;
+    --amber:#D4A017;
+    --code:#F4F4F1;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--ink);
+    font-family:-apple-system,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;
+    font-size:16px;line-height:1.75;
+    padding:24px 16px 56px;
+  }
+  .wrap{max-width:820px;margin:0 auto;}
+  .kicker{font-size:12.5px;font-weight:600;letter-spacing:.08em;color:var(--mut);margin-bottom:10px;}
+  h1{font-size:clamp(23px,6vw,30px);line-height:1.35;letter-spacing:-.01em;margin-bottom:10px;}
+  .lede{color:var(--mut);margin-bottom:18px;font-size:15.5px;}
+  .meta{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+  .meta span{font-size:12px;background:rgba(31,41,55,.05);border-radius:8px;padding:3px 10px;color:var(--mut);}
+  .meta span.ver{background:var(--accent-soft);color:var(--accent);font-weight:700;}
+
+  h2{font-size:18px;font-weight:700;letter-spacing:-.02em;margin:38px 0 12px;padding-top:24px;border-top:1px solid var(--line);}
+  h2 .sn{color:var(--accent);font-weight:800;margin-right:8px;font-family:var(--mono);font-size:15px;}
+  h3{font-size:15px;font-weight:700;margin:22px 0 8px;}
+  h4{font-size:14px;font-weight:700;margin:16px 0 6px;color:var(--mut);}
+  p{margin-bottom:10px;}
+  ul,ol{margin:0 0 10px 0;padding-left:20px;}
+  li{padding:2px 0;font-size:14.5px;}
+  strong{font-weight:700;}
+  a{color:var(--accent);text-decoration:none;}
+  a:hover{text-decoration:underline;}
+  .note{font-size:12.5px;color:var(--faint);}
+  .small{font-size:13px;color:var(--mut);}
+  code{font-family:var(--mono);font-size:12.5px;background:rgba(31,41,55,.06);border-radius:5px;padding:1px 6px;word-break:break-word;}
+  pre{
+    font-family:var(--mono);font-size:12px;line-height:1.62;
+    background:var(--code);border:1px solid var(--line);border-radius:12px;
+    padding:14px 16px;margin:10px 0 16px;overflow-x:auto;
+    white-space:pre;tab-size:2;
+  }
+  pre code{background:none;padding:0;font-size:inherit;}
+
+  /* 目录 */
+  .toc{
+    border:1.5px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 8px;background:#fff;
+    display:grid;grid-template-columns:1fr;gap:2px 22px;
+  }
+  .toc a{display:flex;gap:8px;font-size:13.5px;padding:4px 0;color:var(--ink);border-bottom:1px dashed rgba(229,228,222,.7);}
+  .toc a:last-child{border-bottom:none;}
+  .toc a b{color:var(--accent);font-family:var(--mono);font-size:12.5px;font-weight:700;min-width:22px;}
+  .toc .group{font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--faint);padding:8px 0 2px;}
+
+  /* 表 */
+  .tbl-wrap{overflow-x:auto;margin:10px 0 16px;border:1px solid var(--line);border-radius:12px;background:#fff;}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:560px;}
+  th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top;line-height:1.6;}
+  tr:last-child td{border-bottom:none;}
+  th{font-size:11.5px;font-weight:700;color:var(--mut);background:#FAFAF8;white-space:nowrap;}
+  td code{font-size:11.5px;}
+  .tag{display:inline-block;font-size:10.5px;font-weight:800;color:#fff;background:var(--accent);border-radius:5px;padding:1px 7px;vertical-align:1px;}
+  .tag.p1{background:var(--faint);}
+  .tag.warn{background:var(--amber);}
+  .req{color:var(--accent);font-weight:700;}
+  .no{color:var(--mut);}
+
+  /* 决策卡 */
+  .decisions{list-style:none;padding:0;margin:12px 0 18px;}
+  .decisions li{display:flex;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14.5px;}
+  .decisions li:last-child{border-bottom:none;}
+  .decisions .dn{flex:none;width:24px;height:24px;border-radius:8px;background:var(--accent-soft);color:var(--accent);font-weight:800;font-size:12.5px;display:flex;align-items:center;justify-content:center;margin-top:3px;}
+  .decisions b{display:block;font-size:14.5px;}
+  .decisions span{color:var(--mut);font-size:13.5px;}
+
+  /* 偏离说明 */
+  .deviations{display:grid;grid-template-columns:1fr;gap:10px;margin:12px 0 18px;}
+  .dev-card{border:1.5px solid var(--line);border-left:4px solid var(--accent2);border-radius:12px;padding:10px 14px;background:#fff;}
+  .dev-card b{font-size:14px;}
+  .dev-card span{display:block;color:var(--mut);font-size:13.5px;margin-top:2px;}
+
+  /* 架构图 */
+  .arch{border:1.5px solid var(--line);border-radius:14px;background:#fff;padding:16px 14px 18px;margin:12px 0 18px;}
+  .arch-box{
+    border:1.5px solid var(--line);border-radius:11px;background:#FAFAF8;
+    padding:9px 13px;font-size:13.5px;font-weight:700;text-align:center;
+  }
+  .arch-box span{display:block;font-weight:400;font-size:11.5px;color:var(--mut);margin-top:2px;}
+  .arch-box.root{border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+  .arch-arrow{text-align:center;color:var(--faint);font-size:12px;line-height:1;padding:7px 0;font-family:var(--mono);}
+  .arch-split{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:7px;}
+  .arch-box.accent2{border-color:var(--accent2);}
+
+  /* 小卡片 */
+  .callout{background:var(--accent-soft);border-radius:14px;padding:13px 16px;margin:14px 0 18px;font-size:14px;}
+  .callout b{color:var(--accent);}
+  .final{background:var(--accent-soft);border-radius:16px;padding:16px 18px;font-size:15px;margin-top:26px;}
+  .final b{color:var(--accent);}
+  .rule-box{border:1.5px dashed var(--line);border-radius:12px;padding:10px 14px;background:#fff;margin:10px 0 16px;font-size:13.5px;color:var(--mut);}
+  .rule-box b{color:var(--ink);}
+
+  .footer-note{margin-top:26px;padding-top:16px;border-top:1px solid var(--line);}
+
+  @media (min-width:680px){
+    body{padding:52px 28px 72px;}
+    .toc{grid-template-columns:1fr 1fr;}
+    .toc .group{grid-column:1 / -1;}
+    .deviations{grid-template-columns:1fr 1fr 1fr;}
+  }
+</style>
+</head>
+<body data-visualization-style="knowledge-technology">
+<div class="wrap">
+
+  <div class="kicker">技术设计文档 · 2026年11月12日</div>
+  <h1>「拾句」电影台词感悟站 · 技术设计文档</h1>
+  <p class="lede">把产品方案与需求翻译成可开工的技术设计：架构、SSR 与 SEO、库表、接口、缓存、部署。一期（P0）范围，工作代号「拾句」，正式名与域名待定。</p>
+  <div class="meta">
+    <span class="ver">版本 v1.0</span>
+    <span>2026-11-12</span>
+    <span>状态：待评审</span>
+    <span>依据：方案设计 + 需求开发文档 v1.0</span>
+    <span>复用基线：reading-notes</span>
+  </div>
+
+  <nav class="toc">
+    <div class="group">决策与架构</div>
+    <a href="#s0"><b>0</b>文档说明</a>
+    <a href="#s1"><b>1</b>架构总览</a>
+    <a href="#s2"><b>2</b>渲染与 SEO 架构</a>
+    <a href="#s3"><b>3</b>工程结构</a>
+    <a href="#s4"><b>4</b>数据库设计</a>
+    <div class="group">实现细节</div>
+    <a href="#s5"><b>5</b>API 设计</a>
+    <a href="#s6"><b>6</b>SSR 缓存与失效</a>
+    <a href="#s7"><b>7</b>账号与权限</a>
+    <a href="#s8"><b>8</b>搜索实现</a>
+    <a href="#s9"><b>9</b>导出实现</a>
+    <a href="#s10"><b>10</b>后台与种子导入</a>
+    <div class="group">交付与运维</div>
+    <a href="#s11"><b>11</b>安全与非功能</a>
+    <a href="#s12"><b>12</b>部署与运维</a>
+    <a href="#s13"><b>13</b>测试与验收</a>
+    <a href="#s14"><b>14</b>里程碑与工作量</a>
+    <a href="#s15"><b>15</b>风险与待决项</a>
+    <a href="#s16"><b>16</b>请求全链路示例</a>
+  </nav>
+
+  <!-- 0 -->
+  <h2 id="s0"><span class="sn">0</span>文档说明</h2>
+
+  <h3>0.1 目的</h3>
+  <p>把产品方案与需求翻译成可以直接开工的技术设计：定架构、定渲染方案、定库表、定接口、定部署，并明确与产品文档的偏差及原因。本文档只覆盖<strong>一期（P0）</strong>；二期内容仅在数据模型和扩展点上预留。</p>
+
+  <h3>0.2 已拍板的技术决策</h3>
+  <ul class="decisions">
+    <li><span class="dn">1</span><div><b>数据库：MySQL 8 + mysql2 裸 SQL + 有序校验和迁移</b><span>复用读书笔记已验证的路由/服务/迁移/备份体系，运维只有一套栈。</span></div></li>
+    <li><span class="dn">2</span><div><b>登录：用户名 + 密码 + JWT</b><span>直接复用现有账号体系，零外部依赖；手机号登录作为二期扩展点保留。</span></div></li>
+    <li><span class="dn">3</span><div><b>渲染：Express 运行时 SSR + 内存缓存</b><span>登录后页面走 SPA 壳；满足 SEO 硬要求，且不引入 Next.js、不重写前端。</span></div></li>
+    <li><span class="dn">4</span><div><b>进程：单 Node 进程 + systemd</b><span>不用 pm2 cluster——限流计数与 SSR 缓存都在进程内存里。</span></div></li>
+    <li><span class="dn">5</span><div><b>部署：Nginx + Node + MySQL 同机</b><span>沿用现有 2 核 2G 单机部署，成本最低。</span></div></li>
+    <li><span class="dn">6</span><div><b>前端：React 18 + Vite 6 + TS，client 与 SSR 双构建</b><span>与现有客户端代码同构，组件与样式可直接复用。</span></div></li>
+  </ul>
+
+  <h3>0.3 与产品文档的三处偏离</h3>
+  <p class="small">需求文档写的是「Express + MongoDB」「手机号验证码」「pm2」，与现有可复用栈不一致。本设计按上表执行：</p>
+  <div class="deviations">
+    <div class="dev-card"><b>MongoDB → MySQL 8</b><span>关系模型清晰，无文档型嵌套需求；迁移校验、mysqldump 备份、事务与 CHECK 约束已在现有项目跑通。产品文档的字段全部保留，落成表结构。</span></div>
+    <div class="dev-card"><b>手机号验证码 → 用户名密码</b><span>短信需服务商、签名报备（1–3 个工作日）与按条计费；现有 JWT + bcrypt + token_version 已满足「感悟归属到人」。预留 phone / login_type 与短信接口位。</span></div>
+    <div class="dev-card"><b>pm2 → systemd</b><span>现有部署手册使用 systemd 单实例，且明确要求单进程；pm2 cluster 会破坏内存限流与 SSR 缓存的一致性。</span></div>
+  </div>
+  <div class="callout"><b>评审提示：</b>三处偏离需在评审时确认。若坚持 MongoDB 或手机号登录，影响面分别是「全部 SQL 层重写」与「新增短信服务与合规流程」，不在一期范围内。</div>
+
+  <h3>0.4 术语</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>术语</th><th>含义</th></tr></thead>
+      <tbody>
+        <tr><td>作品 Work</td><td>一部电影。<code>type</code> 预留剧集取值，一期只启用电影。</td></tr>
+        <tr><td>台词 Quote</td><td>从作品中摘出的一句对白/独白，含角色与场景，拥有独立网址。</td></tr>
+        <tr><td>感悟 Reflection</td><td>用户针对某句台词写的一段文字，1–500 字，最小记录单位。</td></tr>
+        <tr><td>本子 Notebook</td><td>某用户全部感悟的聚合视图，按作品分组、可导出。</td></tr>
+        <tr><td>公共页</td><td>首页、台词页、影片页、主题页、搜索页，允许匿名访问与缓存。</td></tr>
+        <tr><td>私有页</td><td>写感悟、我的本子、登录注册、后台，只返回 SPA 壳、禁止缓存。</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 1 -->
+  <h2 id="s1"><span class="sn">1</span>架构总览</h2>
+
+  <h3>1.1 拓扑</h3>
+  <div class="arch">
+    <div class="arch-box">浏览器<span>HTTPS</span></div>
+    <div class="arch-arrow">↓</div>
+    <div class="arch-box root">Nginx :443<span>TLS · gzip · 静态资源 · 反向代理</span></div>
+    <div class="arch-split">
+      <div class="arch-box">client/dist/assets<span>immutable，长缓存 1 年</span></div>
+      <div class="arch-box accent2">Node 单进程 :3001<span>公共页 SSR · SPA 壳 · /api</span></div>
+    </div>
+    <div class="arch-arrow">↓</div>
+    <div class="arch-box">MySQL 8<span>127.0.0.1:3306 · 库名 shiju</span></div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>请求类型</th><th>路径</th><th>处理方</th><th>缓存</th></tr></thead>
+      <tbody>
+        <tr><td>静态资源</td><td><code>/assets/*</code>、<code>/favicon.svg</code></td><td>Nginx 直接读盘</td><td>1 年 immutable</td></tr>
+        <tr><td>公共页面</td><td><code>/</code>、<code>/q/*</code>、<code>/movie/*</code>、<code>/theme/*</code>、<code>/search</code></td><td>Node SSR</td><td>Node 内存缓存 + ETag</td></tr>
+        <tr><td>数据接口</td><td><code>/api/*</code></td><td>Node Express</td><td><code>no-store</code></td></tr>
+        <tr><td>私有页面</td><td><code>/notebook</code>、<code>/q/*/write</code>、<code>/auth/*</code>、<code>/admin/*</code></td><td>Node 返回 SPA 壳</td><td><code>private, no-store</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>1.2 技术选型</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>层</th><th>选型</th><th>版本</th><th>复用情况</th></tr></thead>
+      <tbody>
+        <tr><td>运行时</td><td>Node.js</td><td>≥ 20（开发验证 24）</td><td>复用</td></tr>
+        <tr><td>Web 框架</td><td>Express</td><td>4.21.x</td><td>复用</td></tr>
+        <tr><td>数据库</td><td>MySQL</td><td>8.0+（开发 8.4）</td><td>复用</td></tr>
+        <tr><td>数据访问</td><td>mysql2/promise + 手写 SQL</td><td>3.12.x</td><td>复用</td></tr>
+        <tr><td>迁移</td><td>自研 migrate.js（三位序号 + SHA-256 校验）</td><td>—</td><td>复用</td></tr>
+        <tr><td>鉴权</td><td>jsonwebtoken HS256 + bcrypt + token_version</td><td>9.x / 6.x</td><td>复用</td></tr>
+        <tr><td>SSR</td><td>react-dom/server <code>renderToString</code></td><td>18.3.x</td><td>新增</td></tr>
+        <tr><td>路由</td><td>react-router 7（项目依赖 react-router-dom 7）</td><td>7.x</td><td>复用 + SSR 入口</td></tr>
+        <tr><td>构建</td><td>Vite</td><td>6.3.x</td><td>复用</td></tr>
+        <tr><td>语言</td><td>服务端纯 ESM JavaScript；前端 TypeScript</td><td>—</td><td>复用</td></tr>
+        <tr><td>样式</td><td>原生 CSS + CSS 变量，按组件拆文件</td><td>—</td><td>复用 token 体系</td></tr>
+        <tr><td>进程守护</td><td>systemd</td><td>—</td><td>复用</td></tr>
+        <tr><td>反向代理</td><td>Nginx（TLS、gzip、静态资源）</td><td>—</td><td>复用</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">不引入：ORM、Redis、消息队列、全文检索引擎、前端状态库、UI 组件库、第三方统计脚本。P0 体量不需要，每多一个组件就多一份 2G 内存与运维成本。</p>
+
+  <h3>1.3 三条硬约束</h3>
+  <ul>
+    <li><strong>只运行一个 Node 进程。</strong>限流计数、幂等缓存、SSR 页面缓存都在进程内存；多实例会让限流与失效逻辑失真。</li>
+    <li><strong>Nginx 与 Node 同机。</strong>服务端 <code>trust proxy = loopback</code>，只信任来自 127.0.0.1 的 <code>X-Forwarded-For</code>，用于按真实 IP 限流。</li>
+    <li><strong>数据库只允许 <code>shiju</code> / <code>shiju_*</code>。</strong>启动时校验库名，避免误连读书笔记的 <code>reading_notes</code> 或旧库。</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2 id="s2"><span class="sn">2</span>渲染与 SEO 架构</h2>
+
+  <h3>2.1 为什么是运行时 SSR</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>方案</th><th>首屏 HTML</th><th>内容更新</th><th>与现有栈复用</th><th>2C2G 成本</th></tr></thead>
+      <tbody>
+        <tr><td>纯 SPA（现状）</td><td>空壳</td><td>即时</td><td>最高</td><td>最低，但不满足 SEO</td></tr>
+        <tr><td>构建期预渲染（SSG）</td><td>完整</td><td>需重新构建发布，公开感悟有延迟</td><td>中</td><td>低</td></tr>
+        <tr><td><strong>运行时 SSR（选定）</strong></td><td>完整</td><td>即时</td><td>高，仍是一个 Express 进程</td><td>中，靠缓存摊平</td></tr>
+        <tr><td>Next.js</td><td>完整</td><td>即时</td><td>低，前端需重写</td><td>中</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>公共页每次请求先查内存缓存，命中直接返回字符串；未命中才查询数据库并渲染。内容发布时主动失效，公开感悟与台词的更新没有延迟。</p>
+
+  <h3>2.2 SSR 执行流程</h3>
+<pre><code>GET /q/forrest-gump-chocolate
+  │
+  ├─ 1. 缓存命中且 tag 版本一致、未过期 ──▶ 返回缓存 HTML（ETag / 304）
+  │
+  └─ 2. 未命中
+        ├─ createStaticHandler(routes).query(new Request(内部 URL))
+        │     loader 通过 http://127.0.0.1:3001/api/* 取数（不带任何凭证）
+        ├─ createStaticRouter(routes, context)
+        ├─ renderToString(&lt;StaticRouterProvider router context /&gt;)
+        ├─ renderMeta(matches, loaderData) 生成 title/description/canonical/JSON-LD
+        ├─ 注入 client/dist/index.html 的 &lt;!--app-head--&gt; 与 &lt;!--app-html--&gt;
+        ├─ 组装 CSP（内联脚本按内容算 sha256）
+        ├─ 写入缓存（HTML + ETag + tags + 过期时间）
+        └─ 返回 200</code></pre>
+  <ul>
+    <li>服务端使用 <code>createStaticHandler</code> + <code>createStaticRouter</code> + <code>StaticRouterProvider</code>（react-router 7）；</li>
+    <li>客户端使用 <code>createBrowserRouter(routes, { hydrationData })</code>，<code>loaderData</code> 由 SSR 注入，<strong>首屏不重复请求接口</strong>；</li>
+    <li>loader 统一走内部 HTTP 调 <code>/api</code>，不直连 service：序列化逻辑只有一份，service 与 SQL 不会被打进客户端包；loopback 开销 2–4ms，被缓存摊平；</li>
+    <li>服务端请求<strong>不带 <code>Authorization</code>、不读 Cookie</strong>，公共页永远是匿名快照——这是缓存安全的前提。</li>
+  </ul>
+
+  <h3>2.3 路由渲染与索引矩阵</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>路由</th><th>渲染</th><th>索引策略</th><th>canonical</th><th>缓存</th></tr></thead>
+      <tbody>
+        <tr><td><code>/</code> 首页</td><td>SSR</td><td><code>index,follow</code></td><td><code>/</code></td><td>60s；tags <code>all,home,daily,quote:*</code></td></tr>
+        <tr><td><code>/q/:slug</code> 台词详情</td><td>SSR</td><td><code>index,follow</code></td><td>自身</td><td>300s；tags <code>all,quote:{id},work:{id},theme:*</code></td></tr>
+        <tr><td><code>/q/:slug?page=n</code>（n≥2）</td><td>SSR</td><td><code>noindex,follow</code></td><td>不输出（避免指向第 1 页的错误信号），输出 <code>rel=prev/next</code></td><td>120s</td></tr>
+        <tr><td><code>/movie/:slug</code> 影片页</td><td>SSR</td><td><code>index,follow</code></td><td>自身</td><td>300s；tags <code>all,work:{id}</code></td></tr>
+        <tr><td><code>/theme/:slug</code> 主题页</td><td>SSR</td><td><code>index,follow</code></td><td>自身</td><td>300s；tags <code>all,theme:{id}</code></td></tr>
+        <tr><td><code>/search?q=</code></td><td>SSR</td><td><code>noindex,follow</code> + robots 禁抓</td><td>无</td><td>120s，无 tag</td></tr>
+        <tr><td><code>/notebook</code></td><td>SPA 壳</td><td><code>noindex,nofollow</code></td><td>—</td><td><code>private, no-store</code></td></tr>
+        <tr><td><code>/q/:slug/write</code></td><td>SPA 壳</td><td><code>noindex,nofollow</code></td><td>—</td><td><code>private, no-store</code></td></tr>
+        <tr><td><code>/auth/login</code>、<code>/auth/register</code></td><td>SPA 壳</td><td><code>noindex,nofollow</code></td><td>—</td><td><code>private, no-store</code></td></tr>
+        <tr><td><code>/admin/*</code></td><td>SPA 壳</td><td><code>noindex,nofollow</code></td><td>—</td><td><code>private, no-store</code></td></tr>
+        <tr><td>404 / 410</td><td>SSR 极简页</td><td><code>noindex</code></td><td>—</td><td>60s</td></tr>
+        <tr><td><code>/sitemap.xml</code></td><td>Node 实时生成</td><td>—</td><td>—</td><td>3600s；tag <code>sitemap</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="callout"><b>必须改掉现有行为：</b>读书笔记的 <code>app.js</code> 对所有响应下发 <code>X-Robots-Tag: noindex, nofollow</code>。新项目要移除全局设置，公共页不加该头；私有页与 <code>/api</code> 保留 <code>noindex</code>。</div>
+
+  <h3>2.4 元信息规则</h3>
+  <p>服务端根据匹配到的路由与 loader 数据生成 head，客户端路由切换时用 <code>useEffect</code> 同步 <code>document.title</code> 与 meta。不引入 react-helmet。</p>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>页面</th><th>title（≤ 30 个汉字）</th><th>description（80–120 字）</th></tr></thead>
+      <tbody>
+        <tr><td>首页</td><td>拾句 · 电影台词感悟本</td><td>每句经典台词一个页面，写下你的感悟，攒成一本带得走的台词本。</td></tr>
+        <tr><td>台词页</td><td>「{台词前 18 字}」台词 ·《{影片}》| 拾句</td><td>{台词全文前 60 字}——{角色}。{影片}经典台词，看看别人在这句话下写了什么。</td></tr>
+        <tr><td>影片页</td><td>《{影片}》经典台词（{n} 句）| 拾句</td><td>收录《{影片}》{n} 句经典台词，含角色与场景说明，每句都可写下你的感悟。</td></tr>
+        <tr><td>主题页</td><td>{主题}主题台词精选 | 拾句</td><td>人生、爱情、离别、勇气……按主题浏览经典电影台词，写下你的感悟。</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li>每页一个 <code>&lt;h1&gt;</code>，台词页的 <code>&lt;h1&gt;</code> 是台词原文；</li>
+    <li>输出 <code>og:title</code>、<code>og:description</code>、<code>og:type=article</code>、<code>og:url</code>、<code>og:site_name</code>；P0 不输出 <code>og:image</code>（无图片素材）；</li>
+    <li>canonical 一律绝对 URL，域名取 <code>SITE_URL</code>；</li>
+    <li>日期展示统一 <code>Intl.DateTimeFormat('zh-CN', { timeZone: 'Asia/Shanghai' })</code>，共享模块导出，避免 SSR 与 hydration 文本不一致。</li>
+  </ul>
+
+  <h3>2.5 结构化数据</h3>
+  <p>schema.org 的 <code>Quotation</code> 目前是 pending 类型（含 <code>spokenByCharacter</code>），Google 没有对应富结果，但 Bing、AI 检索与知识图谱可消费。台词页输出 <code>@graph</code>：<code>Quotation</code> + <code>BreadcrumbList</code>；首页另加 <code>WebSite</code> + <code>SearchAction</code>。</p>
+<pre><code>{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "Quotation",
+      "text": "生活就像一盒巧克力，你永远不知道下一颗是什么味道。",
+      "inLanguage": "zh-CN",
+      "spokenByCharacter": { "@type": "Person", "name": "阿甘" },
+      "isBasedOn": { "@type": "Movie", "name": "阿甘正传", "dateCreated": "1994" },
+      "mainEntityOfPage": "https://shiju.example.com/q/forrest-gump-chocolate"
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "首页", "item": "https://shiju.example.com/" },
+        { "@type": "ListItem", "position": 2, "name": "《阿甘正传》", "item": "https://shiju.example.com/movie/forrest-gump" },
+        { "@type": "ListItem", "position": 3, "name": "台词" }
+      ]
+    }
+  ]
+}</code></pre>
+  <p class="small">若 Rich Results Test 报告类型不被识别，降级为 <code>CreativeWork</code> + <code>additionalType: "https://schema.org/Quotation"</code>，其余字段不变。</p>
+
+  <h3>2.6 sitemap 与 robots</h3>
+  <p><code>GET /sitemap.xml</code> 由 Node 实时拼装，包含：首页、全部 <code>status=1</code> 的台词页、<code>status=1</code> 且至少有一句已发布台词的影片页与主题页；<code>lastmod</code> 取该实体的 <code>updated_at</code>。内存缓存 1 小时 + ETag，内容变更时 <code>bump('sitemap')</code> 失效。500 条台词远低于单文件 5 万条上限；超过 5 万时按 <code>/sitemap-quotes-{n}.xml</code> 分片并生成索引文件。</p>
+<pre><code># client/public/robots.txt（静态，由 Nginx 直出）
+User-agent: *
+Allow: /
+Disallow: /search
+Disallow: /notebook
+Disallow: /q/*/write
+Disallow: /auth/
+Disallow: /admin/
+
+Sitemap: https://shiju.example.com/sitemap.xml</code></pre>
+  <p class="small"><code>/search</code> 是无限 URL 空间，禁止抓取以节省抓取预算；页面本身仍对用户与分享可见。</p>
+
+  <h3>2.7 301 / 404 / 410</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>情况</th><th>响应</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>旧 slug 命中 <code>slug_redirect</code></td><td>301 到新地址</td><td>后台修改 slug 时写入映射；保留至少 1 年</td></tr>
+        <tr><td>台词 <code>status=3</code>（墓碑）</td><td>410 + 说明页</td><td>已下架内容，明确告知搜索引擎永久移除</td></tr>
+        <tr><td>台词 <code>status=0/2</code></td><td>404</td><td>草稿/下线不暴露存在性</td></tr>
+        <tr><td>作品/主题不存在或未发布</td><td>404</td><td>统一文案「页面不存在或已下架」</td></tr>
+        <tr><td>无权限访问他人私密感悟</td><td>404</td><td>不返回 403，避免枚举</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>404/410 页面同为 SSR 极简页，带站内搜索入口，<code>noindex</code>。</p>
+
+  <h3>2.8 hydration 与降级</h3>
+  <ul>
+    <li>SSR 输出的 HTML 必须与客户端首帧一致：所有随机值（今日一句、时间格式）都在服务端确定并写入 <code>hydrationData</code>；</li>
+    <li>渲染超时（默认 1500ms）或抛错时，返回 <strong>SPA 壳</strong> 并带 <code>X-SSR-Fallback: 1</code> 与 <code>Cache-Control: no-store</code>，客户端兜底拉取数据；可用性优先，SEO 降级可观测；</li>
+    <li>客户端路由切换只对公共页做普通 SPA 导航，不再请求 SSR；回退/前进时浏览器缓存可用；</li>
+    <li>私有页永远返回 SPA 壳，不参与 SSR。</li>
+  </ul>
+
+  <!-- 3 -->
+  <h2 id="s3"><span class="sn">3</span>工程结构</h2>
+
+  <h3>3.1 目录树</h3>
+<pre><code>shiju/
+├─ package.json                     # workspaces: client, server；统一脚本
+├─ .nvmrc
+├─ client/
+│  ├─ index.html                    # 含 &lt;!--app-head--&gt; / &lt;!--app-html--&gt; 占位
+│  ├─ vite.config.ts                # manifest + ssrManifest
+│  ├─ public/
+│  │  ├─ robots.txt
+│  │  └─ favicon.svg
+│  └─ src/
+│     ├─ main.tsx                   # 现有 SPA 入口（保留）
+│     ├─ entry-client.tsx           # hydrateRoot / createBrowserRouter ← 新增
+│     ├─ entry-server.tsx           # createStaticHandler + renderToString ← 新增
+│     ├─ routes.tsx                 # 路由树 + loader + handle 元信息（两端共用）
+│     ├─ App.tsx
+│     ├─ api/                       # client.ts 复用；quotes.ts / reflections.ts / me.ts…
+│     ├─ auth/AuthContext.tsx       # 复用
+│     ├─ ssr/
+│     │  ├─ meta.ts                 # title/description/OG/canonical
+│     │  ├─ jsonld.ts               # Quotation / BreadcrumbList
+│     │  └─ loaders.ts              # 公共页数据装载
+│     ├─ pages/
+│     │  ├─ Home.tsx  Quote.tsx  Work.tsx  Theme.tsx  Search.tsx
+│     │  ├─ Notebook.tsx  Write.tsx
+│     │  ├─ Login.tsx  Register.tsx  NotFound.tsx  Gone.tsx
+│     │  └─ admin/QuotesAdmin.tsx  WorksAdmin.tsx  ThemesAdmin.tsx
+│     ├─ components/
+│     └─ styles/
+│        ├─ tokens.css              # 复用并改主题色
+│        └─ *.css
+├─ server/
+│  ├─ package.json
+│  ├─ .env.example
+│  └─ src/
+│     ├─ index.js                   # 启动 HTTP 服务
+│     ├─ app.js                     # 组装中间件 / API / SSR 兜底
+│     ├─ config.js                  # 环境变量 + 库名守卫
+│     ├─ errors.js  validate.js     # 复用
+│     ├─ db/
+│     │  ├─ pool.js                 # 复用
+│     │  ├─ migrate.js              # 复用
+│     │  └─ migrations/
+│     │     ├─ 001_init.sql
+│     │     └─ 002_quote_theme.sql
+│     ├─ middleware/
+│     │  ├─ auth.js  admin.js  cors.js  errorHandler.js
+│     │  ├─ rateLimit.js  requestLog.js  securityHeaders.js
+│     ├─ routes/
+│     │  ├─ index.js  pages.js  auth.js  quotes.js  works.js  themes.js
+│     │  ├─ reflections.js  search.js  me.js  export.js  admin.js  health.js
+│     ├─ services/
+│     │  ├─ auth.js  users.js  quotes.js  works.js  themes.js
+│     │  ├─ reflections.js  likes.js  search.js  export.js  sitemap.js
+│     │  ├─ seed.js  idempotency.js
+│     └─ ssr/
+│        ├─ render.js               # 缓存查询、超时、降级
+│        ├─ cache.js                # LRU + tag 版本戳
+│        ├─ assets.js               # 读取 Vite manifest
+│        └─ dev.js                  # 开发态 Vite middleware
+├─ server/scripts/
+│  ├─ create-admin.mjs
+│  ├─ import-seed.mjs
+│  ├─ check-seo.mjs
+│  ├─ backup.sh  restore.sh
+├─ seed/
+│  ├─ works.jsonl
+│  ├─ quotes.jsonl
+│  └─ themes.jsonl
+└─ DEPLOY.md</code></pre>
+
+  <h3>3.2 从读书笔记复用的文件</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>现有文件</th><th>新项目用途</th><th>需要改动</th></tr></thead>
+      <tbody>
+        <tr><td><code>server/src/app.js</code></td><td>中间件组装</td><td>去掉全局 <code>X-Robots-Tag</code>；新增安全头、CSP；API 之后挂 SSR 兜底</td></tr>
+        <tr><td><code>server/src/config.js</code></td><td>配置</td><td>库名守卫改为 <code>^shiju(_[a-z0-9]+)?$</code>；新增 <code>SITE_URL</code>、<code>SSR_*</code></td></tr>
+        <tr><td><code>server/src/errors.js</code></td><td><code>AppError</code> / <code>ah()</code> / 统一错误</td><td>直接复用</td></tr>
+        <tr><td><code>server/src/validate.js</code></td><td><code>readBody</code> / <code>assertValid</code> / 用户名密码昵称校验</td><td>直接复用，新增台词/感悟校验</td></tr>
+        <tr><td><code>server/src/db/pool.js</code>、<code>migrate.js</code></td><td>连接池与迁移</td><td>直接复用，新库新迁移</td></tr>
+        <tr><td><code>server/src/middleware/*</code></td><td>鉴权、CORS、错误、限流、请求日志</td><td>限流支持按 <code>user_id</code> 计数；新增 <code>admin.js</code>、<code>securityHeaders.js</code></td></tr>
+        <tr><td><code>server/src/services/idempotency.js</code></td><td><code>Idempotency-Key</code></td><td>直接复用</td></tr>
+        <tr><td><code>server/src/services/notes.js</code></td><td>分页、<code>LIKE</code> 搜索、可见性过滤写法</td><td>作为范本改写为 <code>quotes.js</code> / <code>reflections.js</code></td></tr>
+        <tr><td><code>server/scripts/backup.sh</code>、<code>restore.sh</code></td><td>备份恢复</td><td>库名改 <code>shiju</code>；P0 无上传目录，只备份 SQL</td></tr>
+        <tr><td><code>client/src/api/client.ts</code></td><td>fetch 封装、<code>ApiError</code>、401 处理</td><td>token 键改为 <code>shiju_token</code></td></tr>
+        <tr><td><code>client/src/auth/AuthContext.tsx</code></td><td>登录态</td><td>直接复用</td></tr>
+        <tr><td><code>client/src/styles/tokens.css</code></td><td>设计令牌</td><td>主题色改为 <code>#FBFBFA</code> / <code>#1F2937</code> / <code>#334EAC</code></td></tr>
+        <tr><td><code>DEPLOY.md</code></td><td>部署手册</td><td>按 SSR 拓扑重写 Nginx 与升级流程</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>3.3 构建与运行</h3>
+<pre><code>// 根 package.json（scripts）
+{
+  "scripts": {
+    "dev": "npm run dev -w server",
+    "build": "npm run build -w client",
+    "start": "NODE_ENV=production npm start -w server",
+    "migrate": "npm run migrate -w server",
+    "seed": "node server/scripts/import-seed.mjs",
+    "check:seo": "node server/scripts/check-seo.mjs",
+    "test": "npm test -w server",
+    "test:int": "npm run test:int -w server"
+  }
+}
+
+// client/package.json（scripts）
+{
+  "scripts": {
+    "build": "tsc --noEmit &amp;&amp; vite build &amp;&amp; vite build --ssr src/entry-server.tsx --outDir dist-ssr",
+    "typecheck": "tsc --noEmit"
+  }
+}</code></pre>
+  <ul>
+    <li><code>client/dist/</code>：浏览器构建，含 <code>.vite/manifest.json</code>；</li>
+    <li><code>client/dist-ssr/entry-server.js</code>：SSR 入口，Node 启动时动态 import 并缓存模块；</li>
+    <li><code>client/dist/.vite/ssr-manifest.json</code>：SSR 用到的 chunk 映射（按需预加载）。</li>
+  </ul>
+  <p>开发态：<code>npm run dev</code> 只启动 server，<code>server/src/ssr/dev.js</code> 以 middleware 模式创建 Vite，<code>appType: 'custom'</code>，SSR 通过 <code>vite.ssrLoadModule('/src/entry-server.tsx')</code> 加载；页面改动 HMR，服务端改动由 <code>node --watch</code> 重启。单端口 3001，避免跨域与代理配置。</p>
+
+  <!-- 4 -->
+  <h2 id="s4"><span class="sn">4</span>数据库设计</h2>
+
+  <h3>4.1 约定</h3>
+  <ul>
+    <li>引擎 <code>InnoDB</code>，字符集 <code>utf8mb4</code>，排序规则 <code>utf8mb4_unicode_ci</code>（与现有迁移一致）；</li>
+    <li>主键 <code>BIGINT UNSIGNED AUTO_INCREMENT</code>（小表可用 <code>INT UNSIGNED</code>）；</li>
+    <li>时间统一 <code>DATETIME(3)</code>，存 UTC，接口输出 ISO 8601，展示时转 <code>Asia/Shanghai</code>；</li>
+    <li>字段名 <code>snake_case</code>；状态/枚举用 <code>TINYINT UNSIGNED</code> + <code>CHECK</code>；</li>
+    <li>感悟按用户意图真删：用户删除执行物理删除（<code>DELETE</code>，点赞随外键级联），管理员只做隐藏（<code>status=2</code>）；台词下架置 <code>status=2</code>，下架且不再恢复置 <code>status=3</code>（墓碑，返回 410）；</li>
+    <li>外键不级联删除用户内容（<code>RESTRICT</code>），点赞表随感悟级联删除；</li>
+    <li>迁移文件命名 <code>\d{3}_[a-z0-9_]+\.sql</code>，已执行文件内容不可修改。</li>
+  </ul>
+
+  <h3>4.2 表清单</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>表</th><th>作用</th><th>关键约束</th></tr></thead>
+      <tbody>
+        <tr><td><code>user</code></td><td>账号</td><td><code>username</code> 唯一；预留 <code>phone</code>、<code>login_type</code></td></tr>
+        <tr><td><code>work</code></td><td>作品（电影）</td><td><code>slug</code> 唯一；<code>type</code> 预留剧集</td></tr>
+        <tr><td><code>quote</code></td><td>台词</td><td><code>slug</code> 唯一；<code>source_key</code> 唯一保证导入幂等</td></tr>
+        <tr><td><code>theme</code></td><td>主题标签</td><td><code>slug</code> / <code>name</code> 唯一</td></tr>
+        <tr><td><code>quote_theme</code></td><td>台词—主题多对多</td><td>联合主键</td></tr>
+        <tr><td><code>reflection</code></td><td>感悟</td><td><code>(user_id, quote_id)</code> 唯一，一句一感悟</td></tr>
+        <tr><td><code>reflection_like</code></td><td>点赞</td><td>联合主键，天然幂等</td></tr>
+        <tr><td><code>quote_request</code></td><td>用户「想收录某句台词」的请求</td><td>一期只记录，不直接入库</td></tr>
+        <tr><td><code>search_log</code></td><td>搜索日志</td><td>零结果报表与补录依据</td></tr>
+        <tr><td><code>seed_batch</code></td><td>种子导入批次</td><td><code>file_sha256</code> 唯一</td></tr>
+        <tr><td><code>slug_redirect</code></td><td>旧地址 301</td><td><code>(entity, old_slug)</code> 唯一</td></tr>
+        <tr><td><code>export_log</code></td><td>导出审计</td><td>不做内容留存</td></tr>
+        <tr><td><code>daily_pick</code></td><td>首页今日一句人工编排（可选）</td><td>按日期主键</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>4.3 完整 DDL（001_init.sql）</h3>
+<pre><code>-- 用户：复用读书笔记的账号模型，新增 role 与短信登录预留字段
+CREATE TABLE `user` (
+  `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `username`       VARCHAR(20)     NOT NULL,
+  `password_hash`  VARCHAR(72)     NOT NULL,
+  `nickname`       VARCHAR(20)     NOT NULL,
+  `avatar_preset`  TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '预设头像序号，0-11',
+  `role`           TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1 普通用户 / 9 管理员',
+  `token_version`  INT UNSIGNED    NOT NULL DEFAULT 0 COMMENT '改密/禁用时自增，使 JWT 失效',
+  `status`         TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '0 禁用 / 1 正常',
+  `phone`          VARCHAR(20)     NULL COMMENT '预留：短信登录',
+  `login_type`     TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1 用户名密码 / 2 手机号（预留）',
+  `agreed_at`      DATETIME(3)     NULL COMMENT '同意用户协议与隐私条款的时间',
+  `created_at`     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at`     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_username` (`username`),
+  UNIQUE KEY `uk_user_phone` (`phone`),
+  CONSTRAINT `chk_user_role` CHECK (`role` IN (1, 9)),
+  CONSTRAINT `chk_user_status` CHECK (`status` IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 作品：一期只启用 type=1（电影），剧集维度预留
+CREATE TABLE `work` (
+  `id`             BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `type`           TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1 电影 / 2 剧集（预留）',
+  `slug`           VARCHAR(80)     NOT NULL,
+  `title`          VARCHAR(120)    NOT NULL,
+  `original_title` VARCHAR(160)    NULL,
+  `year`           SMALLINT UNSIGNED NULL,
+  `director`       VARCHAR(120)    NULL,
+  `country`        VARCHAR(40)     NULL,
+  `synopsis`       VARCHAR(1000)   NULL,
+  `status`         TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '0 草稿 / 1 发布 / 2 下线',
+  `quote_count`    INT UNSIGNED    NOT NULL DEFAULT 0 COMMENT '已发布台词数，写时维护',
+  `created_at`     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at`     DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_work_slug` (`slug`),
+  KEY `idx_work_status_year` (`status`, `year`),
+  CONSTRAINT `chk_work_type` CHECK (`type` IN (1, 2)),
+  CONSTRAINT `chk_work_status` CHECK (`status` IN (0, 1, 2))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 台词：页面与记录的基本单位
+CREATE TABLE `quote` (
+  `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `work_id`      BIGINT UNSIGNED NOT NULL,
+  `slug`         VARCHAR(96)     NOT NULL,
+  `quote_text`   VARCHAR(600)    NOT NULL COMMENT '台词原文，应用层限制 &lt;= 60 字',
+  `speaker`      VARCHAR(60)     NULL COMMENT '说话角色',
+  `context`      VARCHAR(800)    NULL COMMENT '场景说明，一句话',
+  `search_text`  TEXT            NOT NULL COMMENT '写入时规范化：台词+角色+影片+导演+主题',
+  `pinyin`       TEXT            NOT NULL COMMENT '全拼 + 首字母，空格分隔，供拼音搜索',
+  `featured`     TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '1 首页精选',
+  `status`       TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '0 草稿 / 1 发布 / 2 下线 / 3 墓碑',
+  `source_key`   CHAR(40)        NULL COMMENT 'sha1(work.slug + \\n + quote_text)，导入幂等',
+  `published_at` DATETIME(3)     NULL,
+  `created_at`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_quote_slug` (`slug`),
+  UNIQUE KEY `uk_quote_source` (`source_key`),
+  KEY `idx_quote_work` (`work_id`, `status`, `published_at` DESC),
+  KEY `idx_quote_feed` (`status`, `published_at` DESC, `id` DESC),
+  KEY `idx_quote_featured` (`featured`, `status`, `published_at` DESC),
+  CONSTRAINT `fk_quote_work` FOREIGN KEY (`work_id`) REFERENCES `work` (`id`),
+  CONSTRAINT `chk_quote_status` CHECK (`status` IN (0, 1, 2, 3))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 主题：人生 / 爱情 / 离别 / 勇气…
+CREATE TABLE `theme` (
+  `id`          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+  `slug`        VARCHAR(40)     NOT NULL,
+  `name`        VARCHAR(30)     NOT NULL,
+  `description` VARCHAR(300)    NULL,
+  `sort_order`  INT             NOT NULL DEFAULT 0,
+  `status`      TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '0 隐藏 / 1 发布',
+  `created_at`  DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at`  DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_theme_slug` (`slug`),
+  UNIQUE KEY `uk_theme_name` (`name`),
+  CONSTRAINT `chk_theme_status` CHECK (`status` IN (0, 1))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `quote_theme` (
+  `quote_id` BIGINT UNSIGNED NOT NULL,
+  `theme_id` INT UNSIGNED    NOT NULL,
+  PRIMARY KEY (`quote_id`, `theme_id`),
+  KEY `idx_qt_theme` (`theme_id`, `quote_id`),
+  CONSTRAINT `fk_qt_quote` FOREIGN KEY (`quote_id`) REFERENCES `quote` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_qt_theme` FOREIGN KEY (`theme_id`) REFERENCES `theme` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 感悟：一句台词下每位用户一条；用户删除为物理删除，点赞级联清理
+CREATE TABLE `reflection` (
+  `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `quote_id`     BIGINT UNSIGNED NOT NULL,
+  `user_id`      BIGINT UNSIGNED NOT NULL,
+  `body`         VARCHAR(500)    NOT NULL,
+  `visibility`   TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0 私密 / 1 好友 / 2 公开',
+  `status`       TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1 正常 / 2 管理员隐藏',
+  `like_count`   INT UNSIGNED    NOT NULL DEFAULT 0 COMMENT '冗余计数，点赞事务内维护',
+  `published_at` DATETIME(3)     NULL COMMENT '公开时间，visibility=2 时写入',
+  `created_at`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  `updated_at`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_reflection_user_quote` (`user_id`, `quote_id`),
+  KEY `idx_reflection_public` (`quote_id`, `visibility`, `status`, `like_count` DESC, `created_at` DESC, `id` DESC),
+  KEY `idx_reflection_user` (`user_id`, `status`, `created_at` DESC, `id` DESC),
+  CONSTRAINT `fk_reflection_quote` FOREIGN KEY (`quote_id`) REFERENCES `quote` (`id`),
+  CONSTRAINT `fk_reflection_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
+  CONSTRAINT `chk_reflection_visibility` CHECK (`visibility` IN (0, 1, 2)),
+  CONSTRAINT `chk_reflection_status` CHECK (`status` IN (1, 2)),
+  CONSTRAINT `chk_reflection_body` CHECK (CHAR_LENGTH(`body`) BETWEEN 1 AND 500)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `reflection_like` (
+  `reflection_id` BIGINT UNSIGNED NOT NULL,
+  `user_id`       BIGINT UNSIGNED NOT NULL,
+  `created_at`    DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`reflection_id`, `user_id`),
+  KEY `idx_like_user` (`user_id`, `created_at`),
+  CONSTRAINT `fk_like_reflection` FOREIGN KEY (`reflection_id`) REFERENCES `reflection` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_like_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 求收录：用户想收录某句台词，一期不做用户直投稿，只作为二期信号
+CREATE TABLE `quote_request` (
+  `id`         BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`    BIGINT UNSIGNED NOT NULL,
+  `text`       VARCHAR(200)    NOT NULL COMMENT '用户想收录的台词',
+  `work_title` VARCHAR(120)    NULL COMMENT '用户填写的影片名',
+  `note`       VARCHAR(300)    NULL,
+  `status`     TINYINT UNSIGNED NOT NULL DEFAULT 1 COMMENT '1 待处理 / 2 已收录 / 3 忽略',
+  `created_at` DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_request_status` (`status`, `created_at`),
+  KEY `idx_request_user` (`user_id`, `created_at`),
+  CONSTRAINT `fk_request_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`),
+  CONSTRAINT `chk_request_status` CHECK (`status` IN (1, 2, 3))
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `search_log` (
+  `id`           BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `query`        VARCHAR(100)    NOT NULL,
+  `normalized`   VARCHAR(100)    NOT NULL,
+  `result_count` SMALLINT UNSIGNED NOT NULL,
+  `user_id`      BIGINT UNSIGNED NULL,
+  `ip_hash`      CHAR(32)        NULL COMMENT 'sha256(ip + salt) 前 32 位',
+  `created_at`   DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_search_zero` (`result_count`, `created_at`),
+  KEY `idx_search_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `seed_batch` (
+  `id`          INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+  `batch_name`  VARCHAR(60)     NOT NULL,
+  `file_sha256` CHAR(64)        NOT NULL,
+  `total`       INT UNSIGNED    NOT NULL,
+  `inserted`    INT UNSIGNED    NOT NULL,
+  `updated`     INT UNSIGNED    NOT NULL,
+  `skipped`     INT UNSIGNED    NOT NULL,
+  `report`      JSON            NULL,
+  `created_at`  DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_seed_sha` (`file_sha256`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `slug_redirect` (
+  `id`         INT UNSIGNED    NOT NULL AUTO_INCREMENT,
+  `entity`     TINYINT UNSIGNED NOT NULL COMMENT '1 台词 / 2 作品 / 3 主题',
+  `old_slug`   VARCHAR(96)     NOT NULL,
+  `new_slug`   VARCHAR(96)     NOT NULL,
+  `created_at` DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_redirect` (`entity`, `old_slug`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `export_log` (
+  `id`               BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id`          BIGINT UNSIGNED NOT NULL,
+  `format`           TINYINT UNSIGNED NOT NULL COMMENT '1 txt / 2 md',
+  `reflection_count` INT UNSIGNED    NOT NULL,
+  `bytes`            INT UNSIGNED    NOT NULL,
+  `created_at`       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`id`),
+  KEY `idx_export_user` (`user_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 可选：首页今日一句的人工编排；无记录时按日期确定性回退
+CREATE TABLE `daily_pick` (
+  `pick_date`  DATE            NOT NULL,
+  `quote_id`   BIGINT UNSIGNED NOT NULL,
+  `note`       VARCHAR(200)    NULL,
+  `created_at` DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+  PRIMARY KEY (`pick_date`),
+  KEY `idx_pick_quote` (`quote_id`),
+  CONSTRAINT `fk_pick_quote` FOREIGN KEY (`quote_id`) REFERENCES `quote` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;</code></pre>
+
+  <h3>4.4 索引与查询对应</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>查询</th><th>索引</th></tr></thead>
+      <tbody>
+        <tr><td>台词详情</td><td><code>uk_quote_slug</code></td></tr>
+        <tr><td>影片页台词列表</td><td><code>idx_quote_work (work_id, status, published_at DESC)</code></td></tr>
+        <tr><td>首页精选 / 最新</td><td><code>idx_quote_featured</code>、<code>idx_quote_feed</code></td></tr>
+        <tr><td>主题页台词</td><td><code>quote_theme</code> 主键 + <code>quote</code> 状态过滤</td></tr>
+        <tr><td>台词页公开感悟</td><td><code>idx_reflection_public (quote_id, visibility, status, like_count DESC, created_at DESC, id DESC)</code></td></tr>
+        <tr><td>我的本子</td><td><code>idx_reflection_user (user_id, status, created_at DESC)</code></td></tr>
+        <tr><td>点赞存在性</td><td><code>reflection_like</code> 主键</td></tr>
+        <tr><td>搜索</td><td><code>quote</code> 全表扫（数百行）；<code>LIKE</code> 见第 8 节</td></tr>
+        <tr><td>零结果报表</td><td><code>idx_search_zero</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>4.5 状态与可见性</h3>
+  <h4>台词状态机</h4>
+<pre><code>草稿(0) ──发布──▶ 发布(1) ──下线──▶ 下线(2)
+                    ▲                  │
+                    └────重新发布──────┘
+下线(2) ──永久移除──▶ 墓碑(3)（不可恢复，返回 410）</code></pre>
+  <p><strong>作品状态</strong>：草稿(0) → 发布(1) ↔ 下线(2)。下线作品下的台词即使 <code>status=1</code> 也不可访问。</p>
+
+  <h4>感悟可见性矩阵</h4>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>visibility</th><th>作者</th><th>其他登录用户</th><th>匿名</th><th>详情页列表</th><th>我的本子</th><th>导出</th><th>可点赞</th></tr></thead>
+      <tbody>
+        <tr><td>0 私密</td><td>可见</td><td>不可见（404）</td><td>不可见</td><td>不出现</td><td>出现</td><td>包含</td><td>否</td></tr>
+        <tr><td>1 好友（P0 等同私密）</td><td>可见</td><td>不可见</td><td>不可见</td><td>不出现</td><td>出现</td><td>包含</td><td>否</td></tr>
+        <tr><td>2 公开</td><td>可见</td><td>可见（仅昵称）</td><td>可见</td><td>出现</td><td>出现</td><td>包含</td><td>是</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p><strong>感悟状态</strong>：正常(1) / 管理员隐藏(2)。用户删除不做软删除，直接物理删除该行（点赞级联删除）；隐藏仅由管理员触发，作者在详情页与我的本子中都看不到被隐藏的内容。</p>
+
+  <h3>4.6 一句一感悟（显式假设）</h3>
+  <div class="rule-box">
+    <b>UNIQUE(user_id, quote_id)</b> 表示「每人在每句台词下只有一条感悟」，编辑即修改该条；删除是真删，之后再写会插入新行（<code>id</code> 变化、<code>like_count</code> 从 0 开始）。<br>
+    收益：本子按作品分组不出现同一句的多条重复记录；天然限制刷屏；详情页列表以「人」为单位，信息密度稳定。<br>
+    代价：用户无法对同一句写多篇。此项列入待决项；若改为多篇，只需去掉唯一键并在列表中加入 <code>id</code> 维度，其余接口不变。
+  </div>
+
+  <!-- 5 -->
+  <h2 id="s5"><span class="sn">5</span>API 设计</h2>
+
+  <h3>5.1 通用约定</h3>
+  <ul>
+    <li>前缀 <code>/api</code>；请求与响应均为 JSON（导出接口除外）；</li>
+    <li>成功 <code>{ "data": ... }</code>；失败 <code>{ "error": { "code", "message", "details"? } }</code>；</li>
+    <li>错误码大写下划线：<code>VALIDATION_ERROR</code>、<code>UNAUTHORIZED</code>、<code>TOKEN_EXPIRED</code>、<code>TOKEN_REVOKED</code>、<code>FORBIDDEN</code>、<code>NOT_FOUND</code>、<code>CONFLICT</code>、<code>RATE_LIMITED</code>、<code>INTERNAL_ERROR</code>；</li>
+    <li>鉴权 <code>Authorization: Bearer &lt;JWT&gt;</code>；JWT 14 天有效，载荷含 <code>sub</code>（用户 ID）与 <code>tv</code>（token_version）；</li>
+    <li>分页 <code>page</code> 从 1 开始，<code>page_size</code> 默认 20、最大 50；响应 <code>{ items, page, page_size, total, has_more }</code>，与现有 <code>services/notes.js</code> 一致（多取 1 条判断 <code>has_more</code>）；</li>
+    <li>匿名可读：台词、影片、主题、公开感悟、搜索均无需登录；私密内容与「我的本子」「导出」需要 Token；</li>
+    <li>幂等：<code>POST /api/reflections</code>、后台发布/导入接受 <code>Idempotency-Key</code>（8–64 位），复用 <code>services/idempotency.js</code>，TTL 10 分钟；</li>
+    <li>时间 ISO 8601 UTC，如 <code>2026-11-12T04:30:00.000Z</code>；前端统一按 <code>Asia/Shanghai</code> 展示；</li>
+    <li>请求体限制 1MB；未知字段直接拒绝（复用 <code>readBody</code>）。</li>
+  </ul>
+
+  <h3>5.2 端点总表</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>方法</th><th>路径</th><th>鉴权</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>POST</td><td><code>/api/auth/register</code></td><td>否</td><td><code>{username,password,nickname?,agree_terms}</code>；<code>agree_terms</code> 必须为 <code>true</code>，写入 <code>agreed_at</code> → <code>{token,user}</code></td></tr>
+        <tr><td>POST</td><td><code>/api/auth/login</code></td><td>否</td><td><code>{username,password}</code> → <code>{token,user}</code></td></tr>
+        <tr><td>GET</td><td><code>/api/auth/me</code></td><td>是</td><td>当前用户</td></tr>
+        <tr><td>GET</td><td><code>/api/auth/username-available?username=</code></td><td>否</td><td>注册前查重</td></tr>
+        <tr><td>GET</td><td><code>/api/quotes</code></td><td>否</td><td><code>work</code> / <code>theme</code> / <code>featured</code> / 分页；只返回已发布</td></tr>
+        <tr><td>GET</td><td><code>/api/quotes/:slug</code></td><td>可选</td><td>台词 + 作品 + 主题；带 Token 时附 <code>my_reflection</code></td></tr>
+        <tr><td>GET</td><td><code>/api/quotes/:slug/reflections</code></td><td>否</td><td>公开感悟分页，仅 <code>visibility=2,status=1</code></td></tr>
+        <tr><td>GET</td><td><code>/api/quotes/:slug/my-state</code></td><td>是</td><td><code>{reflection, liked_reflection_ids}</code>，供客户端补齐个性化态</td></tr>
+        <tr><td>GET</td><td><code>/api/works</code></td><td>否</td><td>已发布作品分页</td></tr>
+        <tr><td>GET</td><td><code>/api/works/:slug</code></td><td>否</td><td>作品详情 + 该片台词分页</td></tr>
+        <tr><td>GET</td><td><code>/api/themes</code></td><td>否</td><td>主题列表</td></tr>
+        <tr><td>GET</td><td><code>/api/themes/:slug</code></td><td>否</td><td>主题详情 + 台词分页</td></tr>
+        <tr><td>GET</td><td><code>/api/search?q=&amp;page=</code></td><td>否</td><td>站内搜索，写 <code>search_log</code></td></tr>
+        <tr><td>POST</td><td><code>/api/reflections</code></td><td>是</td><td><code>{quote_slug, body, visibility}</code>；幂等</td></tr>
+        <tr><td>PUT</td><td><code>/api/reflections/:id</code></td><td>是</td><td>修改正文；仅本人</td></tr>
+        <tr><td>PUT</td><td><code>/api/reflections/:id/visibility</code></td><td>是</td><td>修改可见范围；仅本人</td></tr>
+        <tr><td>DELETE</td><td><code>/api/reflections/:id</code></td><td>是</td><td>物理删除；仅本人；幂等（重复删除返回 404）</td></tr>
+        <tr><td>PUT</td><td><code>/api/reflections/:id/like</code></td><td>是</td><td>点赞；幂等，返回 <code>{liked,like_count}</code></td></tr>
+        <tr><td>DELETE</td><td><code>/api/reflections/:id/like</code></td><td>是</td><td>取消点赞；幂等</td></tr>
+        <tr><td>POST</td><td><code>/api/quote-requests</code></td><td>是</td><td><code>{text,work_title?,note?}</code>；「想收录」入口，写 <code>quote_request</code></td></tr>
+        <tr><td>GET</td><td><code>/api/me/reflections?page=&amp;group=work</code></td><td>是</td><td>我的本子，按作品分组</td></tr>
+        <tr><td>GET</td><td><code>/api/me/export?format=md|txt</code></td><td>是</td><td>导出附件，非 JSON</td></tr>
+        <tr><td>GET</td><td><code>/sitemap.xml</code></td><td>否</td><td>站点地图（非 <code>/api</code> 前缀）</td></tr>
+        <tr><td>GET</td><td><code>/api/health</code></td><td>否</td><td>健康检查（含 DB 与缓存状态）</td></tr>
+        <tr><td>*</td><td><code>/api/admin/*</code></td><td>role=9</td><td>内容与运营后台，见 5.4</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>5.3 关键接口示例</h3>
+  <h4>台词详情 GET /api/quotes/forrest-gump-chocolate</h4>
+<pre><code>{
+  "data": {
+    "quote": {
+      "id": 12,
+      "slug": "forrest-gump-chocolate",
+      "text": "生活就像一盒巧克力，你永远不知道下一颗是什么味道。",
+      "speaker": "阿甘",
+      "context": "阿甘在长椅上对陌生人说起母亲的话",
+      "published_at": "2026-11-01T02:00:00.000Z"
+    },
+    "work": {
+      "id": 3,
+      "slug": "forrest-gump",
+      "title": "阿甘正传",
+      "original_title": "Forrest Gump",
+      "year": 1994,
+      "director": "罗伯特·泽米吉斯"
+    },
+    "themes": [{ "slug": "life", "name": "人生" }],
+    "my_reflection": null
+  }
+}</code></pre>
+
+  <h4>公开感悟列表 GET /api/quotes/forrest-gump-chocolate/reflections?page=1</h4>
+<pre><code>{
+  "data": {
+    "items": [
+      {
+        "id": 88,
+        "body": "第二次看才懂，希望不是等来的，是挖了十九年挖出来的。",
+        "created_at": "2026-11-10T13:20:00.000Z",
+        "like_count": 12,
+        "author": { "nickname": "老周", "avatar_preset": 3 },
+        "mine": false
+      }
+    ],
+    "page": 1,
+    "page_size": 10,
+    "total": 7,
+    "has_more": false
+  }
+}</code></pre>
+  <p class="small">公开列表<strong>永不返回</strong> <code>username</code>、<code>user_id</code>、手机号等可定位信息；<code>mine</code> 仅在带 Token 且为该条作者时为 <code>true</code>，匿名请求固定 <code>false</code>。排序为 <code>like_count DESC, created_at DESC, id DESC</code>（需求文档「按点赞数」优先），空列表时前端展示「做第一个写感悟的人」并引导登录后写作。此接口可被 SSR 匿名调用，因此不承载个性化态。</p>
+
+  <h4>写感悟 POST /api/reflections</h4>
+<pre><code>{ "quote_slug": "forrest-gump-chocolate", "body": "跑步那段想到我爸。", "visibility": 0 }
+
+// 成功 201：返回感悟对象
+// 失败示例
+{ "error": { "code": "VALIDATION_ERROR", "message": "请检查输入", "details": { "fields": { "body": "感悟最多 500 字" } } } }</code></pre>
+  <p class="small">同句已有感悟时返回 <code>409 CONFLICT</code>（<code>message</code>：同句已有感悟，可前往修改），前端跳转到该条编辑态。</p>
+
+  <h4>求收录 POST /api/quote-requests</h4>
+<pre><code>{ "text": "希望是美好的，也许是人间至善。", "work_title": "肖申克的救赎", "note": "想在这句下面写感悟" }</code></pre>
+  <p class="small">返回 <code>201</code>。一期只记录请求，不直接生成台词；后台在「求收录」列表中处理，避免用户直投稿绕过内容审核与版权校验。</p>
+
+  <h3>5.4 后台接口</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>方法</th><th>路径</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>GET / POST</td><td><code>/api/admin/quotes</code></td><td>列表（含草稿）/ 新建</td></tr>
+        <tr><td>PUT</td><td><code>/api/admin/quotes/:id</code></td><td>编辑（改 slug 自动写 <code>slug_redirect</code>）</td></tr>
+        <tr><td>PUT</td><td><code>/api/admin/quotes/:id/status</code></td><td>发布 / 下线 / 墓碑</td></tr>
+        <tr><td>POST</td><td><code>/api/admin/quotes/bulk</code></td><td>按作品批量录入（JSON 数组，事务）</td></tr>
+        <tr><td>GET / POST</td><td><code>/api/admin/works</code></td><td>作品列表 / 新建</td></tr>
+        <tr><td>PUT</td><td><code>/api/admin/works/:id</code></td><td>编辑</td></tr>
+        <tr><td>GET / POST</td><td><code>/api/admin/themes</code></td><td>主题列表 / 新建</td></tr>
+        <tr><td>PUT</td><td><code>/api/admin/themes/:id</code></td><td>编辑</td></tr>
+        <tr><td>PUT</td><td><code>/api/admin/daily-picks/:date</code></td><td>编排今日一句</td></tr>
+        <tr><td>GET</td><td><code>/api/admin/reflections</code></td><td>举报/隐藏管理，按状态筛选</td></tr>
+        <tr><td>PUT</td><td><code>/api/admin/reflections/:id/status</code></td><td>隐藏 / 恢复</td></tr>
+        <tr><td>GET</td><td><code>/api/admin/quote-requests</code></td><td>求收录请求列表，按状态筛选</td></tr>
+        <tr><td>PUT</td><td><code>/api/admin/quote-requests/:id/status</code></td><td>标记已收录 / 忽略</td></tr>
+        <tr><td>GET</td><td><code>/api/admin/search-stats?days=30</code></td><td>零结果词与热门词报表</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">后台写操作全部经 <code>requireAuth + requireAdmin</code>，并触发对应缓存失效。</p>
+
+  <h3>5.5 错误与状态码</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>HTTP</th><th>code</th><th>场景</th></tr></thead>
+      <tbody>
+        <tr><td>400</td><td><code>VALIDATION_ERROR</code></td><td>字段缺失/超长/未知字段</td></tr>
+        <tr><td>401</td><td><code>UNAUTHORIZED</code> / <code>TOKEN_EXPIRED</code> / <code>TOKEN_REVOKED</code> / <code>INVALID_CREDENTIALS</code></td><td>未登录、过期、改密失效、密码错误</td></tr>
+        <tr><td>403</td><td><code>FORBIDDEN</code></td><td>非管理员访问后台、跨域白名单拒绝</td></tr>
+        <tr><td>404</td><td><code>NOT_FOUND</code></td><td>内容不存在、无权限的私密感悟</td></tr>
+        <tr><td>409</td><td><code>CONFLICT</code></td><td>用户名已存在、同句已有感悟（提示前往修改）</td></tr>
+        <tr><td>410</td><td><code>GONE</code></td><td>台词墓碑（页面路由直接返回 410 HTML）</td></tr>
+        <tr><td>429</td><td><code>RATE_LIMITED</code></td><td>触发限流</td></tr>
+        <tr><td>500</td><td><code>INTERNAL_ERROR</code></td><td>未预期错误（生产不回传堆栈）</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>5.6 限流额度</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>场景</th><th>键</th><th>额度</th><th>实现</th></tr></thead>
+      <tbody>
+        <tr><td>注册</td><td>IP</td><td>10 次/小时</td><td>复用 <code>rateLimit</code></td></tr>
+        <tr><td>登录失败</td><td>账号</td><td>5 次/15 分钟</td><td>复用 <code>createLimiter</code>，成功清零</td></tr>
+        <tr><td>登录失败</td><td>IP</td><td>20 次/15 分钟</td><td>同上</td></tr>
+        <tr><td>用户名查重</td><td>IP</td><td>60 次/分钟</td><td>复用</td></tr>
+        <tr><td>写/改感悟</td><td>用户</td><td>6 次/分钟、60 次/天</td><td>新增按 <code>user_id</code> 计数</td></tr>
+        <tr><td>求收录</td><td>用户</td><td>3 次/天</td><td>新增，避免刷请求</td></tr>
+        <tr><td>点赞/取消</td><td>用户</td><td>60 次/分钟</td><td>新增</td></tr>
+        <tr><td>搜索</td><td>IP</td><td>30 次/分钟</td><td>新增</td></tr>
+        <tr><td>导出</td><td>用户</td><td>5 次/分钟</td><td>新增</td></tr>
+        <tr><td>后台写操作</td><td>用户</td><td>60 次/分钟</td><td>新增</td></tr>
+        <tr><td>SSR 公共页</td><td>—</td><td>不限流</td><td>用缓存与 1.5s 超时保护</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 6 -->
+  <h2 id="s6"><span class="sn">6</span>SSR 缓存与失效</h2>
+
+  <h3>6.1 缓存结构</h3>
+  <p>内存 LRU（<code>server/src/ssr/cache.js</code>，手写 Map，不引依赖）：</p>
+<pre><code>// 条目
+{
+  html,                 // 完整 HTML 字符串
+  etag,                 // sha1(html)
+  tags,                 // ['all','quote:12','work:3','theme:4']
+  seen,                 // { 'all': 3, 'quote:12': 7, ... } 写入时的版本快照
+  freshUntil,           // 新鲜期结束（毫秒）
+  staleUntil            // 可继续返回旧内容的截止时间
+}
+// 全局
+stamps: Map&lt;tag, number&gt;   // 每次失效 +1</code></pre>
+  <ul>
+    <li>上限 400 条，按插入顺序淘汰；单条约 30–80KB，总占用 ≤ 32MB；</li>
+    <li>键为 <code>path + 规范化 query</code>（如 <code>/q/forrest-gump-chocolate?page=1</code>）；</li>
+    <li>同一 URL 的并发未命中用 in-flight <code>Map</code> 去重，只渲染一次。</li>
+  </ul>
+
+  <h3>6.2 失效算法：tag 版本戳</h3>
+<pre><code>export function bump(...tags) {
+  for (const t of tags) stamps.set(t, (stamps.get(t) ?? 0) + 1);
+}
+
+export function lookup(key) {
+  const e = entries.get(key);
+  if (!e) return null;
+  for (const [tag, version] of Object.entries(e.seen)) {
+    if ((stamps.get(tag) ?? 0) !== version) { entries.delete(key); return null; }
+  }
+  if (Date.now() &gt; e.staleUntil) { entries.delete(key); return null; }
+  entries.delete(key); entries.set(key, e); // LRU touch
+  return e;
+}</code></pre>
+  <p><strong>为什么不用「URL 列表反查」：</strong>一条台词会出现在台词页、影片页、主题页、首页与 sitemap，反查关系复杂且易漏；版本戳让失效变成 O(1)。<strong>为什么不映射到单 URL：</strong>一个全局计数器会让所有内容变更击穿全站缓存。</p>
+
+  <h3>6.3 过期策略：SWR</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>时间窗口</th><th>行为</th></tr></thead>
+      <tbody>
+        <tr><td><code>now ≤ freshUntil</code></td><td>直接返回缓存</td></tr>
+        <tr><td><code>freshUntil &lt; now ≤ staleUntil</code></td><td>先返回旧 HTML，同时后台重渲染并覆盖（同 key 去重）</td></tr>
+        <tr><td><code>now &gt; staleUntil</code></td><td>视为未命中，同步渲染</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>TTL 只是兜底，正确性靠写库后主动 <code>bump</code>。典型 TTL：首页 60s、台词/影片/主题 300s、搜索 120s、sitemap 3600s。</p>
+
+  <h3>6.4 失效事件矩阵</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>事件</th><th>bump 的 tag</th></tr></thead>
+      <tbody>
+        <tr><td>台词发布 / 编辑 / 下线 / 墓碑</td><td><code>quote:{id}</code>、<code>work:{work_id}</code>、每个关联 <code>theme:{id}</code>、<code>home</code>、<code>sitemap</code></td></tr>
+        <tr><td>公开感悟新增 / 编辑 / 删除 / 隐藏</td><td><code>quote:{quote_id}</code></td></tr>
+        <tr><td>公开感悟点赞数变化</td><td><code>quote:{quote_id}</code>（接受最多 300s 旧计数，也可改为只刷新列表）</td></tr>
+        <tr><td>作品编辑 / 下线</td><td><code>work:{id}</code>、<code>home</code>、<code>sitemap</code></td></tr>
+        <tr><td>主题编辑</td><td><code>theme:{id}</code>、<code>sitemap</code></td></tr>
+        <tr><td>今日一句编排</td><td><code>daily</code>、<code>home</code></td></tr>
+        <tr><td>种子批量导入</td><td><code>all</code>（全局 tag，所有条目都带）</td></tr>
+        <tr><td>slug 变更</td><td><code>sitemap</code> + 对应实体 tag</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>6.5 公共页永远匿名渲染（硬规则）</h3>
+  <ol>
+    <li>SSR 渲染进程不读取请求的 <code>Cookie</code> / <code>Authorization</code>，内部 API 调用不带凭证；</li>
+    <li>点赞状态、「我的感悟」、昵称等在客户端挂载后通过 <code>/api/quotes/:slug/my-state</code> 获取；</li>
+    <li>私有页（本子、写作、后台、登录）不走 SSR，直接返回 SPA 壳；</li>
+    <li>公开感悟查询固定 <code>visibility=2 AND status=1</code>，不因请求者变化；</li>
+    <li>集成测试固定包含：带 Token 与不带 Token 请求同一台词页，HTML 必须逐字节一致（除 CSP 哈希/时间戳外）；</li>
+    <li>代码评审检查清单包含「新增 SSR 数据源是否使用请求凭证」。</li>
+  </ol>
+
+  <h3>6.6 响应头与降级</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>场景</th><th>响应头</th></tr></thead>
+      <tbody>
+        <tr><td>公共页（缓存新鲜/旧）</td><td><code>Cache-Control: public, max-age=0, must-revalidate</code>、<code>ETag</code></td></tr>
+        <tr><td>公共页（未命中）</td><td>同上，<code>X-SSR-Cache: miss</code></td></tr>
+        <tr><td>SPA 壳</td><td><code>Cache-Control: private, no-store</code>、<code>X-Robots-Tag: noindex, nofollow</code></td></tr>
+        <tr><td>SSR 超时降级</td><td><code>Cache-Control: no-store</code>、<code>X-SSR-Fallback: 1</code></td></tr>
+        <tr><td>API</td><td><code>Cache-Control: no-store</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <ul>
+    <li>渲染超时 1500ms（<code>SSR_TIMEOUT_MS</code> 可调），超时返回 SPA 壳；</li>
+    <li>渲染异常记录 <code>request_id</code> 与错误栈到 journald，不把堆栈返回给用户；</li>
+    <li>缓存命中率目标 ≥ 95%（上线后通过 <code>/api/health</code> 暴露 <code>hit/miss</code> 计数观察）。</li>
+  </ul>
+
+  <!-- 7 -->
+  <h2 id="s7"><span class="sn">7</span>账号与权限</h2>
+
+  <h3>7.1 账号模型（复用现有实现）</h3>
+  <ul>
+    <li>注册：<code>username</code> 3–20 位字母/数字/下划线，密码 ≥ 8 位且 ≤ 64 位（bcrypt 只取前 72 字节），昵称 1–20 字，缺省用用户名；</li>
+    <li>注册即同意条款：前端勾选框必须勾选，请求体 <code>agree_terms: true</code> 才通过校验，服务端同时写入 <code>user.agreed_at</code>（需求文档的合规要求，避免「默认同意」）；</li>
+    <li>密码哈希：bcrypt，cost 由 <code>BCRYPT_COST</code> 控制（默认 12）；</li>
+    <li>登录：失败按账号与 IP 双维度限流；用户不存在时与固定 dummy hash 比对，保持耗时一致，防用户名枚举；</li>
+    <li>JWT：HS256，14 天，载荷 <code>sub</code> + <code>tv</code>；<code>token_version</code> 自增即让该用户所有旧令牌失效；</li>
+    <li>前端 token 存 <code>localStorage</code>（键 <code>shiju_token</code>），请求失败 401 时清理并提示重新登录；</li>
+    <li>P0 无第三方登录、无个人主页、无自助找回密码；忘记密码由管理员执行 <code>reset-password</code> 脚本（复用现有脚本）。</li>
+  </ul>
+
+  <h3>7.2 角色</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>role</th><th>权限</th></tr></thead>
+      <tbody>
+        <tr><td>1 普通用户</td><td>浏览、写/改/删自己的感悟、点赞公开感悟、导出</td></tr>
+        <tr><td>9 管理员</td><td>上述 + 内容 CRUD、发布/下线、隐藏感悟、查看搜索报表</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">管理员账号通过 <code>server/scripts/create-admin.mjs</code> 创建（交互式输入用户名/密码，写 <code>role=9</code>），不在注册接口开放角色字段。</p>
+
+  <h3>7.3 私密感悟不可枚举的防线</h3>
+  <ol>
+    <li>所有「我的」接口以 <code>req.user.id</code> 作为查询条件，<strong>不接受</strong>前端传入 <code>user_id</code>；</li>
+    <li>单条读写先按 <code>id</code> 查询，再校验 <code>user_id === req.user.id</code>，否则返回 404；</li>
+    <li>公共列表 SQL 固定 <code>visibility = 2 AND status = 1</code>；</li>
+    <li>公开感悟响应只含 <code>nickname</code> + <code>avatar_preset</code>，不含用户名、ID、手机号；</li>
+    <li>感悟正文不进入搜索索引、sitemap、RSS、缓存 tag；</li>
+    <li>导出接口只导出当前用户的感悟，文件名不含用户名。</li>
+  </ol>
+
+  <h3>7.4 短信登录扩展点（二期）</h3>
+  <ul>
+    <li>表：<code>user.phone</code>、<code>user.login_type</code> 已预留；二期新增 <code>sms_code</code>（手机号哈希、场景、过期、已用）；</li>
+    <li>接口：<code>POST /api/auth/sms/send</code>、<code>POST /api/auth/sms/login</code>；</li>
+    <li>安全：验证码 5 分钟过期、同号 60s 一次、同 IP 10 次/小时、失败 5 次锁定 15 分钟；</li>
+    <li>供应商：阿里云/腾讯云短信，需提前完成签名与模板报备；</li>
+    <li>账号合并：同一用户既有用户名又有手机号时，以 <code>user</code> 行为准，避免重复内容。</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2 id="s8"><span class="sn">8</span>搜索实现</h2>
+
+  <h3>8.1 数据准备</h3>
+  <p>台词写入时计算两列：</p>
+  <ul>
+    <li><code>search_text</code>：<code>quote_text + speaker + work.title + work.director + theme.name...</code> 经 NFKC 归一、小写、去空白与标点；</li>
+    <li><code>pinyin</code>：全拼 + 首字母，空格分隔。例如「阿甘正传」→ <code>aganjzhengzhuan agzz</code>。</li>
+  </ul>
+<pre><code>export function normalize(input) {
+  return String(input)
+    .normalize('NFKC')
+    .toLowerCase()
+    .replace(/[\s\p{P}\p{S}]+/gu, '');
+}</code></pre>
+  <p>拼音在<strong>导入脚本/后台保存时</strong>计算（<code>pinyin-pro</code> 已在客户端依赖中出现，提升为 workspace 根依赖供脚本使用），运行时不做拼音转换，避免每请求 CPU 开销。</p>
+
+  <h3>8.2 查询</h3>
+<pre><code>SELECT q.id, q.slug, q.quote_text, q.speaker, w.title
+  FROM quote q
+  JOIN work w ON w.id = q.work_id
+ WHERE q.status = 1 AND w.status = 1
+   AND (q.search_text LIKE CONCAT('%', ?, '%') ESCAPE '\\'
+        OR q.pinyin   LIKE CONCAT('%', ?, '%') ESCAPE '\\')
+ ORDER BY (q.quote_text LIKE CONCAT(?, '%') ESCAPE '\\') DESC,
+          q.featured DESC, q.published_at DESC, q.id DESC
+ LIMIT ? OFFSET ?;</code></pre>
+  <ul>
+    <li>输入先归一化，并转义 <code>\</code>、<code>%</code>、<code>_</code>，防止通配符注入；</li>
+    <li>「阿甘」「agz」「forrest」都能命中；</li>
+    <li>数百到数千行全表扫描 &lt; 5ms，不需要 FULLTEXT；MySQL 的 ngram 解析器需要服务端配置且对 1–2 字中文召回差，一期不引入；</li>
+    <li><strong>迁移阈值</strong>：台词超过 5 万条或搜索 p95 &gt; 150ms 时，改用 <code>FULLTEXT(search_text) WITH PARSER ngram</code>（<code>ngram_token_size=2</code>），并保留 LIKE 作为短词兜底；届时再评估 Meilisearch。</li>
+  </ul>
+
+  <h3>8.3 搜索日志</h3>
+  <p>每次有效搜索（<code>q</code> 非空、长度 ≤ 100）写一条 <code>search_log</code>，失败不阻断响应：</p>
+<pre><code>{ "query": "阿甘 巧克力", "normalized": "阿甘巧克力", "result_count": 1, "ip_hash": "…" }</code></pre>
+  <ul>
+    <li><code>ip_hash = sha256(ip + IP_HASH_SALT).slice(0, 32)</code>，不存明文 IP；</li>
+    <li>零结果报表：</li>
+  </ul>
+<pre><code>SELECT normalized, COUNT(*) AS times
+  FROM search_log
+ WHERE result_count = 0 AND created_at &gt;= NOW() - INTERVAL 30 DAY
+ GROUP BY normalized
+ ORDER BY times DESC
+ LIMIT 100;</code></pre>
+  <p class="small">报表用于补录台词、补充同义词与判断剧集需求；日志保留 180 天后清理。<strong>零结果页</strong>展示「没找到这句」+「想收录某句台词」入口，登录用户提交后写 <code>quote_request</code>；这是需求文档 F6 的兜底路径，也把「用户想找但站里没有」的信号沉淀到后台（见 10.1）。</p>
+
+  <!-- 9 -->
+  <h2 id="s9"><span class="sn">9</span>导出实现</h2>
+
+  <h3>9.1 内容与格式</h3>
+  <p><code>GET /api/me/export?format=md|txt</code>，按作品分组、组内按时间倒序，包含台词原文、出处、角色、场景、感悟、日期、可见范围。</p>
+<pre><code># 我的台词本
+
+&gt; 导出于 2026-11-12 · 共 42 条 · 拾句
+
+## 《肖申克的救赎》（3 条）
+
+### 「希望是好事，也许是人间至善，而美好的事物永不消逝。」
+— 安迪 · 场景：安迪越狱前写给瑞德的信
+
+- 2026-11-10 · 私密
+  希望不是等来的，是挖了十九年挖出来的。
+
+### 「有些鸟儿是关不住的。」
+— 瑞德
+
+- 2026-11-08 · 公开
+  体制化那段，说的就是上班的我。</code></pre>
+  <p>纯文本版使用 <code>【作品】</code>、<code>「台词」</code>、<code>— 角色</code> 与缩进感悟，避免依赖 Markdown 渲染器。</p>
+
+  <h3>9.2 响应细节</h3>
+  <ul>
+    <li>UTF-8 编码，文件头加 <strong>BOM</strong>（<code>\uFEFF</code>），保证 Windows 记事本打开中文不乱码；</li>
+    <li><code>Content-Type: text/markdown; charset=utf-8</code> / <code>text/plain; charset=utf-8</code>；</li>
+    <li><code>Content-Disposition: attachment; filename="shiju-notebook-20261112.md"; filename*=UTF-8''...</code>；</li>
+    <li><code>X-Content-Type-Options: nosniff</code>，禁止浏览器嗅探执行；</li>
+    <li>感悟正文原样输出（纯文本），不渲染 HTML/Markdown，避免导出文件被当作富文本注入；</li>
+    <li>按 200 条/批从数据库读取并流式写出，避免一次性占用大内存；完成后写 <code>export_log</code>；</li>
+    <li>导出不设任何限制、不设付费墙；仅做 5 次/分钟频控防止资源滥用。</li>
+    <li>导出文件中的每条台词都带原文链接（Markdown 为 <code>[查看这句](https://…/q/slug)</code>），导入其他工具后仍能跳回站内原页。</li>
+  </ul>
+
+  <!-- 10 -->
+  <h2 id="s10"><span class="sn">10</span>内容后台与种子导入</h2>
+
+  <h3>10.1 后台页面</h3>
+  <p>后台复用同一 React 应用，路由 <code>/admin/*</code>，仅 <code>role=9</code> 可见，SPA 壳 + <code>noindex</code>：</p>
+  <ul>
+    <li>台词管理：按作品筛选、搜索、编辑、发布/下线、批量录入；</li>
+    <li>作品管理：新增/编辑影片信息与 slug；</li>
+    <li>主题管理：排序、描述、上下线；</li>
+    <li>今日一句：按日期选择台词（不选则走确定性回退）；</li>
+    <li>感悟管理：按状态查看、隐藏违规内容；</li>
+    <li>求收录：查看用户提交的「想收录」请求，标记已收录或忽略，收录时直接跳到新建台词表单；</li>
+    <li>搜索报表：近 30 天零结果词与热门词。</li>
+  </ul>
+
+  <h3>10.2 发布状态机与缓存联动</h3>
+  <p>后台每次发布/下线都走同一个 service，事务内更新状态、维护 <code>work.quote_count</code>、写 <code>slug_redirect</code>（如改 slug）、提交后 <code>bump</code> 对应 tag。不允许直接改库绕过 service。</p>
+
+  <h3>10.3 种子导入</h3>
+  <p><code>server/scripts/import-seed.mjs</code> 读取 <code>seed/*.jsonl</code>，默认 dry-run，<code>--apply</code> 才写库。</p>
+<pre><code>{"work":{"slug":"forrest-gump","title":"阿甘正传","original_title":"Forrest Gump","year":1994,"director":"罗伯特·泽米吉斯","country":"美国"},
+ "quote":{"slug":"forrest-gump-chocolate","text":"生活就像一盒巧克力，你永远不知道下一颗是什么味道。","speaker":"阿甘","context":"阿甘在长椅上对陌生人说起母亲的话","themes":["人生"],"featured":true}}</code></pre>
+  <ul>
+    <li>作品按 <code>slug</code> upsert；台词 <code>source_key = sha1(work.slug + "\n" + text)</code>，重复导入只更新不新增；</li>
+    <li>主题按 <code>name</code> upsert；</li>
+    <li>每句校验：1–60 字、必须有出处、<code>context</code> 非空、主题 ≤ 3 个；不通过的行输出到报告并跳过；</li>
+    <li>dry-run 输出：总行数、新增、更新、重复、超长、缺字段；</li>
+    <li>每次 <code>--apply</code> 写一条 <code>seed_batch</code>（文件 SHA-256 + 统计 + 报告 JSON），同一文件重复执行直接跳过；</li>
+    <li>导入完成后 <code>bump('all')</code>。</li>
+  </ul>
+
+  <h3>10.4 收录与版权边界</h3>
+  <ul>
+    <li>单句节选 ≤ 60 字，必须注明影片、角色与场景；</li>
+    <li>不使用剧照、海报、截图、配乐；页面视觉依靠排版卡与纯 CSS；</li>
+    <li>不导入整段剧本、不提供连续对白拼接；</li>
+    <li>「关于」页提供版权说明与下架通道（<code>/about#takedown</code>），收到通知 48 小时内处理；</li>
+    <li>上线前做一次合规复核，结论记录在案。</li>
+  </ul>
+
+  <!-- 11 -->
+  <h2 id="s11"><span class="sn">11</span>安全与非功能</h2>
+
+  <h3>11.1 安全头与 CSP</h3>
+  <p>生产环境由 Node 统一下发（Nginx 只做 TLS 与压缩）：</p>
+<pre><code>Strict-Transport-Security: max-age=31536000
+X-Content-Type-Options: nosniff
+Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=()
+Content-Security-Policy:
+  default-src 'self';
+  script-src 'self' 'sha256-&lt;JSON-LD&gt;' 'sha256-&lt;hydration-data&gt;';
+  style-src 'self';
+  img-src 'self' data:;
+  connect-src 'self';
+  font-src 'self';
+  base-uri 'none';
+  object-src 'none';
+  frame-ancestors 'none';
+  form-action 'self';
+  upgrade-insecure-requests</code></pre>
+  <p class="small">内联脚本只有 JSON-LD 与 hydration 数据两段，按内容哈希加入 CSP，哈希随 HTML 一起缓存；不使用 <code>unsafe-inline</code>。开发态（Vite HMR）关闭 CSP，仅生产启用。P0 不接入任何第三方脚本。</p>
+
+  <h3>11.2 输入与输出</h3>
+  <ul>
+    <li>所有请求体经 <code>readBody</code> 白名单字段 + <code>assertValid</code>；</li>
+    <li>感悟为纯文本：前端不用 <code>dangerouslySetInnerHTML</code>，导出也不渲染 Markdown；React 默认转义；</li>
+    <li>SQL 全部参数化，禁止字符串拼接；LIKE 通配符单独转义；</li>
+    <li>slug 只允许 <code>[a-z0-9-]</code>，生成时由标题拼音 + 去重后缀产生；</li>
+    <li>上传：P0 无文件上传，头像使用预设序号，彻底消除上传类漏洞面。</li>
+  </ul>
+
+  <h3>11.3 性能预算</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>指标</th><th>预算</th></tr></thead>
+      <tbody>
+        <tr><td>台词页 HTML（gzip）</td><td>≤ 35KB</td></tr>
+        <tr><td>CSS（gzip）</td><td>≤ 15KB</td></tr>
+        <tr><td>首屏 JS（gzip）</td><td>≤ 100KB</td></tr>
+        <tr><td>公共页缓存命中 TTFB</td><td>≤ 50ms</td></tr>
+        <tr><td>公共页冷渲染</td><td>≤ 300ms（10 条公开感悟）</td></tr>
+        <tr><td>接口 p95</td><td>≤ 100ms</td></tr>
+        <tr><td>首屏可交互（3G/4G 模拟）</td><td>≤ 2s</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>实现手段：系统字体、无 webfont、无图片、SVG 内联图标、单 CSS 文件、按路由代码分割、公共页 SSR 直出、Nginx gzip。</p>
+
+  <h3>11.4 2C2G 内存预算</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>组件</th><th>预算</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>MySQL</td><td>450–600MB</td><td><code>innodb_buffer_pool_size=256M</code>，<code>performance_schema=OFF</code></td></tr>
+        <tr><td>Node</td><td>250–350MB</td><td><code>--max-old-space-size=384</code>；SSR 单请求约 20MB 峰值</td></tr>
+        <tr><td>SSR 缓存</td><td>≤ 32MB</td><td>400 条 × 约 60KB</td></tr>
+        <tr><td>Nginx + OS</td><td>250–350MB</td><td>常规</td></tr>
+        <tr><td>余量</td><td>≥ 500MB</td><td>应对构建、备份、突发流量</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">在 2G 机器上直接 <code>vite build</code> 可能因内存峰值失败。推荐本地/CI 构建后 rsync <code>client/dist</code> 与 <code>client/dist-ssr</code>；若必须在服务器构建，先加 1GB swap。</p>
+
+  <h3>11.5 备份</h3>
+  <ul>
+    <li>每日 03:30 <code>mysqldump --single-transaction</code> 导出 <code>shiju</code>，gzip 压缩，保留 14 天；</li>
+    <li>先写 <code>.part</code> 临时文件，成功后改名；凭据写 600 权限临时文件，不出现在进程参数；</li>
+    <li>P0 无上传目录，不需要额外打包；</li>
+    <li>每周把备份同步到另一台机器或对象存储；每季度做一次恢复演练并记录行数核对结果。</li>
+  </ul>
+
+  <!-- 12 -->
+  <h2 id="s12"><span class="sn">12</span>部署与运维</h2>
+
+  <h3>12.1 环境变量（server/.env）</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>变量</th><th>生产值</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td><code>PORT</code></td><td><code>3001</code></td><td>只监听 127.0.0.1</td></tr>
+        <tr><td><code>NODE_ENV</code></td><td><code>production</code></td><td>生产不返回调试信息</td></tr>
+        <tr><td><code>SITE_URL</code></td><td><code>https://shiju.example.com</code></td><td>canonical / sitemap / OG 使用</td></tr>
+        <tr><td><code>CORS_ORIGINS</code></td><td><code>https://shiju.example.com</code></td><td>必须包含正式域名</td></tr>
+        <tr><td><code>DB_HOST</code> / <code>DB_PORT</code></td><td><code>127.0.0.1</code> / <code>3306</code></td><td></td></tr>
+        <tr><td><code>DB_USER</code> / <code>DB_PASSWORD</code></td><td>专用账号</td><td>只授权 <code>shiju.*</code></td></tr>
+        <tr><td><code>DB_NAME</code></td><td><code>shiju</code></td><td>启动时校验 <code>^shiju(_[a-z0-9]+)?$</code></td></tr>
+        <tr><td><code>JWT_SECRET</code></td><td>≥ 32 字符随机串</td><td>更换后所有用户需重新登录</td></tr>
+        <tr><td><code>BCRYPT_COST</code></td><td><code>12</code></td><td></td></tr>
+        <tr><td><code>IP_HASH_SALT</code></td><td>随机串</td><td>搜索日志 IP 哈希</td></tr>
+        <tr><td><code>SSR_ENABLED</code></td><td><code>1</code></td><td>紧急情况下置 0 全站走 SPA 壳</td></tr>
+        <tr><td><code>SSR_CACHE_MAX</code></td><td><code>400</code></td><td>缓存条目上限</td></tr>
+        <tr><td><code>SSR_TIMEOUT_MS</code></td><td><code>1500</code></td><td>渲染超时降级阈值</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>12.2 Nginx</h3>
+<pre><code>server {
+    listen 80;
+    server_name shiju.example.com;
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name shiju.example.com;
+
+    ssl_certificate     /etc/letsencrypt/live/shiju.example.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/shiju.example.com/privkey.pem;
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+    root /srv/shiju/client/dist;
+    client_max_body_size 1m;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_types text/html text/css application/javascript application/json application/xml image/svg+xml;
+
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    location = /robots.txt { try_files $uri =404; expires 1h; }
+    location = /favicon.svg { expires 30d; }
+
+    # HTML、/api、/sitemap.xml 全部由 Node 处理
+    location / {
+        proxy_pass http://127.0.0.1:3001;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header Connection "";
+        proxy_set_header X-Forwarded-For $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 15s;
+    }
+}</code></pre>
+  <ul>
+    <li><code>/assets</code> 由 Nginx 直读磁盘，Node 生产环境不启用 <code>express.static</code>；</li>
+    <li>不使用 Nginx <code>proxy_cache</code>：没有可靠的 purge 通道，后台改内容后会产生不可控的脏 HTML；缓存统一在 Node 内做；</li>
+    <li><code>/api</code> 不再单独 location，统一反代，减少配置分叉。</li>
+  </ul>
+
+  <h3>12.3 systemd</h3>
+<pre><code># /etc/systemd/system/shiju.service
+[Unit]
+Description=shiju (SSR + API)
+After=network.target mysql.service
+
+[Service]
+WorkingDirectory=/srv/shiju/server
+Environment=NODE_ENV=production
+Environment=NODE_OPTIONS=--max-old-space-size=384
+ExecStart=/usr/bin/node src/index.js
+Restart=on-failure
+RestartSec=3
+User=shiju
+Group=shiju
+NoNewPrivileges=true
+PrivateTmp=true
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+  <p class="small">禁止 <code>cluster</code> 模式；扩展只能纵向扩机器或拆分读写，不在 P0 范围。</p>
+
+  <h3>12.4 首次部署与升级</h3>
+<pre><code># 首次
+cd /srv/shiju
+npm ci
+cp server/.env.example server/.env &amp;&amp; chmod 600 server/.env
+npm run migrate
+npm run build            # 或本地构建后 rsync dist / dist-ssr
+node server/scripts/import-seed.mjs --apply
+node server/scripts/create-admin.mjs
+sudo systemctl enable --now shiju
+curl -s http://127.0.0.1:3001/api/health
+
+# 升级
+git pull
+npm ci
+npm run backup -w server
+npm run migrate          # 只执行新增迁移；改动旧迁移会报错
+npm run build
+sudo systemctl restart shiju</code></pre>
+  <p>升级期间有约 1–2 秒不可用，缓存清空后前几个请求为冷渲染；可在低峰执行。</p>
+
+  <h3>12.5 监控与上线检查表</h3>
+  <p>监控（P0 用外部拨测 + journald，不引入 APM）：</p>
+  <ul>
+    <li>每分钟请求 <code>/api/health</code>，断言 <code>db.connected=true</code>；</li>
+    <li>每分钟请求 <code>/</code>，断言包含 <code>&lt;h1&gt;</code> 且响应头无 <code>X-SSR-Fallback</code>；</li>
+    <li><code>journalctl -u shiju</code> 每日检查 5xx 与 SSR 降级次数；</li>
+    <li>Google Search Console 每周查看收录与抓取异常。</li>
+  </ul>
+  <div class="rule-box">
+    <b>上线检查表</b><br>
+    □ HTTPS 可访问，HTTP 自动跳转<br>
+    □ <code>CORS_ORIGINS</code> 含正式域名，写操作正常<br>
+    □ <code>DB_NAME=shiju</code>，<code>/api/health</code> 显示数据库已连接<br>
+    □ 随机抽查 20 个台词页：完整 HTML、title/description/canonical/JSON-LD 正确<br>
+    □ <code>curl -A "Googlebot" https://域名/q/xxx</code> 返回 200 且正文含台词与感悟<br>
+    □ <code>/sitemap.xml</code> 200，首尾条目正确，<code>lastmod</code> 合理<br>
+    □ <code>/robots.txt</code> 含 sitemap 地址并禁止 <code>/search</code><br>
+    □ 未登录可浏览全部公共页；登录后写感悟 → 本子 → 导出全链路通过<br>
+    □ 私密感悟在匿名接口、他人账号、sitemap、页面源码中均不可见<br>
+    □ 缓存失效：后台改一句台词，3 秒内台词页与影片页更新<br>
+    □ 备份 cron 已安装，次日出现新备份文件<br>
+    □ 只有一个 Node 进程；重启后缓存与限流清零属预期
+  </div>
+
+  <!-- 13 -->
+  <h2 id="s13"><span class="sn">13</span>测试与验收</h2>
+
+  <h3>13.1 单元测试（node --test）</h3>
+  <ul>
+    <li>slug 生成与去重；搜索归一化与 LIKE 转义；拼音计算；</li>
+    <li>导出模板（MD/TXT）快照；</li>
+    <li>可见性 SQL 条件构造器：给定用户与 visibility，输出条件必须包含 <code>visibility=2</code> 或 <code>user_id=?</code>；</li>
+    <li>缓存：tag bump 后命中失败、SWR 返回旧值、LRU 淘汰。</li>
+  </ul>
+
+  <h3>13.2 集成测试（shiju_test 库）</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>用例</th><th>断言</th></tr></thead>
+      <tbody>
+        <tr><td>注册/登录/限流</td><td>正常注册、重复用户名 409、错误密码 401、超限 429</td></tr>
+        <tr><td>感悟可见性矩阵</td><td>作者/他人/匿名 × 私密/好友/公开 的读写结果符合 4.5</td></tr>
+        <tr><td>私密不可枚举</td><td>他人用 ID 直接 GET/PUT/DELETE 均 404</td></tr>
+        <tr><td>一句一感悟</td><td>同句二次创建返回 409；删除后再创建得到新行，<code>like_count</code> 从 0 开始</td></tr>
+        <tr><td>删除语义</td><td>用户 DELETE 后物理行与点赞均消失；导出/本子不再出现</td></tr>
+        <tr><td>求收录</td><td>登录用户提交入库；匿名 401；超 3 次/天 429；后台可标记状态</td></tr>
+        <tr><td>点赞幂等</td><td>重复 PUT 不重复计数，DELETE 后计数归零</td></tr>
+        <tr><td>搜索</td><td>中文、拼音首字母、影片名、角色名命中；零结果写日志</td></tr>
+        <tr><td>导出</td><td>内容完整、含 BOM、按作品分组、只含本人</td></tr>
+        <tr><td>后台权限</td><td>普通用户访问 <code>/api/admin/*</code> 403</td></tr>
+        <tr><td>内容状态</td><td>下线/草稿不出现在公共接口；墓碑页面 410</td></tr>
+        <tr><td>缓存失效</td><td>发布台词后详情/列表/首页缓存均失效</td></tr>
+        <tr><td>匿名渲染</td><td>带 Token 与不带 Token 请求公共页，HTML 一致且不含昵称</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>13.3 SSR 与 SEO 测试</h3>
+  <p><code>npm run check:seo</code>（<code>server/scripts/check-seo.mjs</code>，对本地或预发环境运行）：</p>
+  <ol>
+    <li>抓取首页、3 个台词页、2 个影片页、2 个主题页：200、<code>Content-Type: text/html</code>、HTML 含 <code>&lt;h1&gt;</code>；<code>&lt;title&gt;</code> 非空且 ≤ 60 字符；<code>meta[name=description]</code> 存在；<code>link[rel=canonical]</code> 为绝对 URL；JSON-LD 可 <code>JSON.parse</code> 且 <code>@type</code> 正确；公共页无 <code>noindex</code>；</li>
+    <li>抓取 <code>/search?q=测试</code>、<code>/notebook</code>，断言含 <code>noindex</code>；</li>
+    <li>抓取 <code>/sitemap.xml</code>，解析 XML，抽样 10 个 URL 返回 200；</li>
+    <li>输出失败项与非零退出码，接入上线前检查。</li>
+  </ol>
+
+  <h3>13.4 E2E（P0 手测 + P1 Playwright）</h3>
+  <p>关键路径：搜索「阿甘」→ 进入台词页 → 注册 → 写私密感悟 → 我的本子看到分组 → 导出 MD → 打开文件确认中文与 BOM → 公开感悟在匿名窗口可见且只有昵称 → 点赞计数正确。</p>
+
+  <h3>13.5 需求覆盖与验收指标</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>需求</th><th>技术落点</th></tr></thead>
+      <tbody>
+        <tr><td>F1 用户账号</td><td>§7、§5.2 auth 接口、<code>user</code> 表</td></tr>
+        <tr><td>F2 台词内容库</td><td>§4.3 <code>work/quote/theme</code>、§10 后台与导入、<code>quote_request</code> 求收录信号</td></tr>
+        <tr><td>F3 台词详情页</td><td>§2 渲染/SEO、§6 缓存、<code>GET /api/quotes/:slug</code></td></tr>
+        <tr><td>F4 写感悟</td><td>§5.3、§7.3 隐私防线、<code>reflection</code> 表</td></tr>
+        <tr><td>F5 我的本子与导出</td><td>§5.2 me 接口、§9 导出</td></tr>
+        <tr><td>F6 站内搜索</td><td>§8、<code>search_log</code>、零结果页的求收录入口</td></tr>
+        <tr><td>6.1 性能与部署</td><td>§11.3、§11.4、§12</td></tr>
+        <tr><td>6.2 搜索引擎收录</td><td>§2.4–2.6、§13.3</td></tr>
+        <tr><td>6.3 数据与账号</td><td>§4、§7</td></tr>
+        <tr><td>6.4 安全与隐私</td><td>§7.3、§11</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p>上线 4 周观察：台词页收录率 ≥ 60%（GSC）、注册→首条感悟转化基线、次周回访基线、零结果搜索词 Top 50、剧集相关搜索占比（二期依据）。</p>
+
+  <!-- 14 -->
+  <h2 id="s14"><span class="sn">14</span>里程碑与工作量</h2>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>阶段</th><th>内容</th><th>交付物</th><th>人日</th></tr></thead>
+      <tbody>
+        <tr><td>M0</td><td>工程骨架：workspaces、配置、库名守卫、CI 脚本</td><td>可启动的空项目</td><td>1</td></tr>
+        <tr><td>M1</td><td>13 张表迁移、种子格式与导入器、≥50 部影片 / 300–500 句校对</td><td>迁移与 <code>seed/*.jsonl</code></td><td>4</td></tr>
+        <tr><td>M2</td><td>账号/角色/后台 CRUD、发布状态机、slug 重定向</td><td>后台可用</td><td>3</td></tr>
+        <tr><td>M3</td><td>公共 API：台词/作品/主题/感悟/点赞/搜索/导出</td><td>接口可用 + 单测</td><td>4</td></tr>
+        <tr><td>M4</td><td>SSR 基础设施：双构建、缓存、meta、JSON-LD、sitemap、410、降级</td><td>公共页 SSR 可用</td><td>5</td></tr>
+        <tr><td>M5</td><td>前端 8 个页面 + SPA 壳 + 登录守卫</td><td>视觉与交互完成</td><td>6</td></tr>
+        <tr><td>M6</td><td>导出模板打磨（MD/TXT/BOM/流式/文件名）</td><td>导出验收</td><td>1</td></tr>
+        <tr><td>M7</td><td>SEO 与性能验收：<code>check:seo</code>、Lighthouse、GSC、Rich Results</td><td>验收报告</td><td>2</td></tr>
+        <tr><td>M8</td><td>部署、systemd、Nginx、备份、监控、上线清单</td><td>上线</td><td>2</td></tr>
+        <tr><td colspan="3"><strong>合计</strong></td><td><strong>28</strong></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="small">前端页面工日占比较大，建议与 M3/M4 并行。</p>
+
+  <!-- 15 -->
+  <h2 id="s15"><span class="sn">15</span>风险与待决项</h2>
+
+  <h3>15.1 风险</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>风险</th><th>影响</th><th>缓解</th></tr></thead>
+      <tbody>
+        <tr><td>SSR 与 API 同进程，慢查询阻塞渲染</td><td>首屏变慢、接口超时</td><td>索引、查询超时 800ms、SSR 1.5s 降级、缓存优先</td></tr>
+        <tr><td>缓存误存私有数据</td><td>隐私事故</td><td>匿名渲染硬规则 + 集成测试 + 评审清单</td></tr>
+        <tr><td>Vite SSR 双构建复杂</td><td>构建失败、上线受阻</td><td>先打通最小 SSR 链路；失败时降级为「构建期预渲染 + Node 兜底」，URL 与缓存接口不变</td></tr>
+        <tr><td>2G 内存构建 OOM</td><td>部署失败</td><td>本地/CI 构建后传输产物；或加 1GB swap</td></tr>
+        <tr><td>台词版权争议</td><td>下架、投诉</td><td>≤60 字、注明出处、无剧照、下架通道、上线前合规复核</td></tr>
+        <tr><td>种子内容质量不足</td><td>首批用户体验差、SEO 无效</td><td>宁可 300 句精品；逐句校对；dry-run 报告拦截重复与超长</td></tr>
+        <tr><td>中文搜索召回差</td><td>用户找不到台词</td><td>拼音首字母 + 主题页兜底 + 零结果日志驱动补录</td></tr>
+        <tr><td>导出文件在 Windows 乱码</td><td>用户投诉</td><td>UTF-8 BOM + 正确 Content-Type</td></tr>
+        <tr><td>限流/幂等在重启后清零</td><td>短时绕过</td><td>P0 接受；升级安排在低峰；监控异常注册量</td></tr>
+        <tr><td>pm2 与 systemd 文档冲突</td><td>运维误配</td><td>文档明确 systemd 单实例，删除 pm2 相关内容</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>15.2 待决项</h3>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>#</th><th>问题</th><th>当前默认</th><th>需谁拍板</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>一句台词是否允许用户写多篇感悟</td><td>P0 一句一篇（唯一键）</td><td>产品</td></tr>
+        <tr><td>2</td><td>首页「今日一句」是否人工编排</td><td>支持 <code>daily_pick</code> 人工指定，缺省按日期确定性回退</td><td>运营</td></tr>
+        <tr><td>3</td><td>P0 是否开放点赞操作</td><td>开放（数据模型已具备），收藏留二期</td><td>产品</td></tr>
+        <tr><td>4</td><td>「好友可见」在好友功能上线前如何展示</td><td>保留选项并提示「好友功能内测中，暂等同私密」</td><td>产品</td></tr>
+        <tr><td>5</td><td>手机号登录是否纳入一期</td><td>不纳入，保留字段与路由扩展点</td><td>产品/合规</td></tr>
+        <tr><td>6</td><td>正式名称与域名</td><td>工作代号「拾句」，域名 <code>SITE_URL</code> 待定</td><td>产品</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 16 -->
+  <h2 id="s16"><span class="sn">16</span>请求全链路示例</h2>
+
+  <h3>16.1 匿名访问台词页</h3>
+<pre><code>GET /q/forrest-gump-chocolate
+→ Nginx location / → Node :3001
+→ SSR cache miss
+→ loader: GET http://127.0.0.1:3001/api/quotes/forrest-gump-chocolate
+          GET http://127.0.0.1:3001/api/quotes/forrest-gump-chocolate/reflections?page=1
+→ MySQL: quote + work + themes；reflection WHERE visibility=2 AND status=1
+→ renderToString + meta + JSON-LD
+→ cache.put(key, html, ['all','quote:12','work:3','theme:4'])
+→ 200 text/html，ETag，Cache-Control: public, max-age=0, must-revalidate</code></pre>
+
+  <h3>16.2 登录用户写感悟</h3>
+<pre><code>POST /api/reflections  Authorization: Bearer …  Idempotency-Key: 9f1c…
+→ requireAuth（校验 tv）
+→ 校验 quote 已发布、body 1–500、visibility ∈ {0,1,2}
+→ 事务：INSERT reflection；命中 uk_reflection_user_quote 则回滚并返回 409
+→ 提交后 bump('quote:12')（仅当 visibility=2）
+→ 201 { data: { id, body, visibility, created_at } }
+→ 前端提示「已存入我的本子」</code></pre>
+
+  <h3>16.3 后台改一句台词</h3>
+<pre><code>PUT /api/admin/quotes/12
+→ requireAuth + requireAdmin
+→ 事务更新 quote、重建 search_text/pinyin、写 slug_redirect（若 slug 变化）
+→ 提交后 bump('quote:12','work:3','theme:4','home','sitemap') + bump('all')
+→ 下一个请求重新渲染并写入缓存</code></pre>
+
+  <div class="final">
+    <b>一句话带走：</b>用 MySQL + Express 单进程把公共页做成「匿名 SSR + tag 版本戳缓存」，用「默认私密 + 按作品聚合 + 可导出」把写的人留住，后台与种子导入保证内容底座——整套骨架与读书笔记同源，等于把验证过的工程体系再跑一遍新赛道。
+  </div>
+
+  <p class="note footer-note">本文档为技术设计评审稿；接口字段、表结构与里程碑以评审结论为准。产品背景与验收口径见《台词感悟站需求开发文档 v1.0》，页面与产品原则见《台词感悟站独立站方案设计》。</p>
+
+</div>
+</body>
+</html>
