@@ -1,0 +1,20 @@
+{
+  "name": "shiju",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w server",
+    "build": "npm run build -w client",
+    "start": "NODE_ENV=production npm start -w server",
+    "migrate": "npm run migrate -w server",
+    "seed": "node server/scripts/import-seed.mjs",
+    "create-admin": "node server/scripts/create-admin.mjs",
+    "check:seo": "node server/scripts/check-seo.mjs",
+    "test": "npm test -w server",
+    "test:int": "npm run test:int -w server"
+  }
+}

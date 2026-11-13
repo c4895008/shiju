@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /search
+Disallow: /notebook
+Disallow: /q/*/write
+Disallow: /auth/
+Disallow: /admin/
+
+Sitemap: https://shiju.example.com/sitemap.xml

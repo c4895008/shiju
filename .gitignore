@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-ssr/
+*.tsbuildinfo
+.env
+server/.env
+server/backups/*.sql
+server/backups/*.sql.gz
+.DS_Store
+*.log
